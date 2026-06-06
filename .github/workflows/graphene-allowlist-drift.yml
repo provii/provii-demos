@@ -1,0 +1,339 @@
+# GrapheneOS verified-boot key allowlist drift monitor.
+#
+# Watches https://grapheneos.org/attestation.json for changes relative to
+# the ALLOWED_SELF_SIGNED_OS_KEYS constant in
+# demo-web-provii-agegate/src/docs/attestation/key-attestation.ts.
+#
+# Any symmetric diff fails the run and opens a GitHub Issue tagged
+# `security`, `attestation`, `drift`. The issue body carries the full
+# diff, the TLS leaf-cert SHA-256 fingerprint of grapheneos.org captured
+# at fetch time, and the upstream JSON `timestamp` field so reviewers
+# can independently confirm the evidence path.
+#
+# Idempotency: the issue title contains the ISO week (e.g. 2026-W17) so
+# the same calendar week never opens two issues. Across weeks a new
+# issue will open on each run that still sees drift.
+#
+# No secrets beyond GITHUB_TOKEN. Dependabot (.github/dependabot.yml)
+# auto-bumps the SHA pins below.
+
+name: GrapheneOS Allowlist Drift
+
+on:
+  schedule:
+    # Mondays 03:00 UTC. Weekly cadence per the DevOps owner, exceeds James's monthly floor.
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-drift:
+    name: Check GrapheneOS allowlist drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Capture grapheneos.org TLS leaf fingerprint
+        id: tls
+        run: |
+          set -euo pipefail
+          # Leaf cert SHA-256 fingerprint captured at fetch time. This is
+          # evidence only: rotation of the Let's Encrypt-style short-lived
+          # cert is routine, so the fingerprint lands in the issue body
+          # rather than gating the workflow on a pinned value.
+          fp="$(echo | openssl s_client -connect grapheneos.org:443 -servername grapheneos.org 2>/dev/null \
+            | openssl x509 -noout -fingerprint -sha256 \
+            | sed 's/^sha256 Fingerprint=//')"
+          if [[ -z "$fp" ]]; then
+            echo "::error::failed to capture TLS fingerprint for grapheneos.org"
+            exit 1
+          fi
+          printf 'fingerprint=%s\n' "$fp" >> "$GITHUB_OUTPUT"
+          printf 'TLS leaf fingerprint: %s\n' "$fp"
+
+      - name: Fetch upstream attestation.json
+        id: fetch
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 30 \
+            --retry 3 --retry-delay 5 --retry-all-errors \
+            -o upstream.json \
+            https://grapheneos.org/attestation.json
+          # Sanity: valid JSON with the expected top-level keys.
+          jq -e 'has("verifiedBootKeys") and has("timestamp")' upstream.json > /dev/null
+          ts="$(jq -r '.timestamp' upstream.json)"
+          printf 'timestamp=%s\n' "$ts" >> "$GITHUB_OUTPUT"
+          printf 'upstream timestamp: %s (%s UTC)\n' "$ts" "$(date -u -d "@$ts" '+%Y-%m-%dT%H:%M:%SZ')"
+
+      - name: Extract upstream + local key sets
+        id: diff
+        env:
+          ALLOWLIST_FILE: demo-web-provii-agegate/src/docs/attestation/key-attestation.ts
+        run: |
+          set -euo pipefail
+
+          # Upstream: sorted, deduped, one key per line.
+          jq -r '.verifiedBootKeys[]' upstream.json | sort -u > upstream-keys.txt
+
+          # Local: extract every 64-char lowercase hex token inside the
+          # ALLOWED_SELF_SIGNED_OS_KEYS array. The module's own load-time
+          # check (lines 188-208 of key-attestation.ts) already refuses
+          # anything non-hex or not 64 chars, so a lenient grep here is
+          # safe: if it finds a hex token that isn't meant to be in the
+          # array, the module wouldn't load in production anyway.
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const src = readFileSync(process.env.ALLOWLIST_FILE, "utf8");
+            const m = src.match(/ALLOWED_SELF_SIGNED_OS_KEYS[\s\S]*?\[([\s\S]*?)\];/);
+            if (!m) {
+              console.error("could not locate ALLOWED_SELF_SIGNED_OS_KEYS array");
+              process.exit(2);
+            }
+            const keys = Array.from(m[1].matchAll(/"([0-9a-f]{64})"/g), x => x[1]);
+            if (keys.length === 0) {
+              console.error("extracted zero keys from allowlist; regex drift?");
+              process.exit(3);
+            }
+            for (const k of [...new Set(keys)].sort()) console.log(k);
+          ' > local-keys.txt
+
+          upstream_count=$(wc -l < upstream-keys.txt | tr -d ' ')
+          local_count=$(wc -l < local-keys.txt | tr -d ' ')
+          printf 'upstream count: %s\nlocal count: %s\n' "$upstream_count" "$local_count"
+
+          # Set diffs. comm(1) needs sorted input, which we already have.
+          comm -23 upstream-keys.txt local-keys.txt > only-upstream.txt
+          comm -13 upstream-keys.txt local-keys.txt > only-local.txt
+
+          only_upstream_count=$(wc -l < only-upstream.txt | tr -d ' ')
+          only_local_count=$(wc -l < only-local.txt | tr -d ' ')
+
+          printf 'keys only in upstream: %s\n' "$only_upstream_count"
+          printf 'keys only in local: %s\n' "$only_local_count"
+
+          {
+            printf 'upstream_count=%s\n' "$upstream_count"
+            printf 'local_count=%s\n' "$local_count"
+            printf 'only_upstream_count=%s\n' "$only_upstream_count"
+            printf 'only_local_count=%s\n' "$only_local_count"
+          } >> "$GITHUB_OUTPUT"
+
+          if [[ "$only_upstream_count" -gt 0 || "$only_local_count" -gt 0 ]]; then
+            printf 'drift=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'drift=false\n' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compose issue body
+        if: steps.diff.outputs.drift == 'true'
+        id: body
+        env:
+          FINGERPRINT: ${{ steps.tls.outputs.fingerprint }}
+          TIMESTAMP: ${{ steps.fetch.outputs.timestamp }}
+          UPSTREAM_COUNT: ${{ steps.diff.outputs.upstream_count }}
+          LOCAL_COUNT: ${{ steps.diff.outputs.local_count }}
+          ONLY_UPSTREAM_COUNT: ${{ steps.diff.outputs.only_upstream_count }}
+          ONLY_LOCAL_COUNT: ${{ steps.diff.outputs.only_local_count }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ALLOWLIST_URL: ${{ github.server_url }}/${{ github.repository }}/blob/main/demo-web-provii-agegate/src/docs/attestation/key-attestation.ts
+          RUNBOOK_URL: ${{ github.server_url }}/${{ github.repository }}/blob/main/docs/runbooks/graphene-allowlist-rotation.md
+        run: |
+          set -euo pipefail
+          # ISO week slug for idempotency. GNU date on ubuntu-latest.
+          week_slug="$(date -u '+%G-W%V')"
+          printf 'week_slug=%s\n' "$week_slug" >> "$GITHUB_OUTPUT"
+
+          iso_ts="$(date -u -d "@${TIMESTAMP}" '+%Y-%m-%dT%H:%M:%SZ')"
+
+          # Upstream-only / local-only payloads rendered once, reused
+          # below. Empty sets render as a single "(none)" paragraph.
+          if [[ -s only-upstream.txt ]]; then
+            only_upstream_block="$(printf '%s\n%s\n%s\n' '```' "$(cat only-upstream.txt)" '```')"
+          else
+            only_upstream_block='_(none)_'
+          fi
+          if [[ -s only-local.txt ]]; then
+            only_local_block="$(printf '%s\n%s\n%s\n' '```' "$(cat only-local.txt)" '```')"
+          else
+            only_local_block='_(none)_'
+          fi
+          export only_upstream_block only_local_block iso_ts
+
+          # Single-quoted heredoc keeps markdown backticks literal.
+          # Placeholder tokens are replaced via a python one-liner so
+          # we never mix bash interpolation with backtick-laden markdown.
+          cat > issue-body.md.tpl <<'TEMPLATE_EOF'
+          ## GrapheneOS allowlist drift detected
+
+          The weekly drift monitor found a symmetric difference between
+          the upstream `verifiedBootKeys` array and the local
+          `ALLOWED_SELF_SIGNED_OS_KEYS` constant.
+
+          ### Evidence
+
+          | Field | Value |
+          | --- | --- |
+          | Upstream source | <https://grapheneos.org/attestation.json> |
+          | TLS leaf SHA-256 fingerprint (fetch-time) | `__FINGERPRINT__` |
+          | Upstream JSON `timestamp` field | `__TIMESTAMP__` (__ISO_TS__) |
+          | Upstream key count | __UPSTREAM_COUNT__ |
+          | Local key count | __LOCAL_COUNT__ |
+          | Local allowlist file | <__ALLOWLIST_URL__> |
+          | Runbook | <__RUNBOOK_URL__> |
+          | Workflow run | <__RUN_URL__> |
+
+          ### Keys in upstream but missing locally (__ONLY_UPSTREAM_COUNT__)
+
+          Newly added Pixel models or rotated GrapheneOS keys. Review and add.
+
+          __ONLY_UPSTREAM_BLOCK__
+
+          ### Keys in local but missing upstream (__ONLY_LOCAL_COUNT__)
+
+          Removed or rotated upstream. Review and possibly delete locally.
+
+          __ONLY_LOCAL_BLOCK__
+
+          ### Next steps
+
+          Follow `docs/runbooks/graphene-allowlist-rotation.md`.
+          Cross-check the JSON against the HTML compatibility guide
+          at <https://grapheneos.org/articles/attestation-compatibility-guide>
+          before amending the source file.
+          TEMPLATE_EOF
+
+          # Strip the 10-space indentation that YAML block scalars
+          # introduce, then substitute placeholders via python so
+          # markdown backticks round-trip untouched.
+          sed -E 's/^ {10}//' issue-body.md.tpl \
+            | python3 -c '
+          import os, sys
+          text = sys.stdin.read()
+          mapping = {
+              "__FINGERPRINT__": os.environ["FINGERPRINT"],
+              "__TIMESTAMP__": os.environ["TIMESTAMP"],
+              "__ISO_TS__": os.environ["iso_ts"],
+              "__UPSTREAM_COUNT__": os.environ["UPSTREAM_COUNT"],
+              "__LOCAL_COUNT__": os.environ["LOCAL_COUNT"],
+              "__ALLOWLIST_URL__": os.environ["ALLOWLIST_URL"],
+              "__RUNBOOK_URL__": os.environ["RUNBOOK_URL"],
+              "__RUN_URL__": os.environ["RUN_URL"],
+              "__ONLY_UPSTREAM_COUNT__": os.environ["ONLY_UPSTREAM_COUNT"],
+              "__ONLY_LOCAL_COUNT__": os.environ["ONLY_LOCAL_COUNT"],
+              "__ONLY_UPSTREAM_BLOCK__": os.environ["only_upstream_block"],
+              "__ONLY_LOCAL_BLOCK__": os.environ["only_local_block"],
+          }
+          for key, value in mapping.items():
+              text = text.replace(key, value)
+          sys.stdout.write(text)
+          ' > issue-body.md
+
+          cat issue-body.md
+
+      - name: Upload diff evidence
+        if: steps.diff.outputs.drift == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: graphene-allowlist-drift-evidence
+          path: |
+            upstream.json
+            upstream-keys.txt
+            local-keys.txt
+            only-upstream.txt
+            only-local.txt
+            issue-body.md
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Open or reuse drift issue
+        if: steps.diff.outputs.drift == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          WEEK_SLUG: ${{ steps.body.outputs.week_slug }}
+          ONLY_UPSTREAM_COUNT: ${{ steps.diff.outputs.only_upstream_count }}
+          ONLY_LOCAL_COUNT: ${{ steps.diff.outputs.only_local_count }}
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('issue-body.md', 'utf8');
+            const weekSlug = process.env.WEEK_SLUG;
+            const onlyUpstream = process.env.ONLY_UPSTREAM_COUNT;
+            const onlyLocal = process.env.ONLY_LOCAL_COUNT;
+            const title = `GrapheneOS allowlist drift detected (${weekSlug})`;
+
+            // Idempotency: search for an open issue with the same exact
+            // title. We do not try to reconcile against closed issues. A
+            // reviewer who closed the last one has accepted that state.
+            const existing = await github.paginate(
+              github.rest.issues.listForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: 'attestation,drift',
+                per_page: 100,
+              },
+            );
+            const match = existing.find(i => i.title === title);
+            if (match) {
+              core.notice(`reusing existing open issue #${match.number}`);
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `Drift still present on re-run. upstream-only: ${onlyUpstream}, local-only: ${onlyLocal}.\n\n${body}`,
+              });
+              core.setFailed(`drift detected (existing issue #${match.number} updated)`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['security', 'attestation', 'drift'],
+            });
+            core.notice(`opened issue #${created.data.number}`);
+
+            // Best-effort assignee. `sarah-chen` is the expected user
+            // login derived from the @provii/sarah-chen team slug
+            // in CODEOWNERS. If the login does not resolve (user left,
+            // etc.) we log a notice and continue; the labels alone route
+            // the issue to the security triage board.
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: created.data.number,
+                assignees: ['sarah-chen'],
+              });
+            } catch (err) {
+              core.notice(`could not assign sarah-chen: ${err.message}`);
+            }
+
+            core.setFailed(`drift detected (opened issue #${created.data.number})`);
+
+      - name: Report clean run
+        if: steps.diff.outputs.drift == 'false'
+        env:
+          UPSTREAM_COUNT: ${{ steps.diff.outputs.upstream_count }}
+        run: |
+          printf 'No drift. Upstream and local allowlist agree on %s keys.\n' \
+            "$UPSTREAM_COUNT"

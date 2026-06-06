@@ -1,0 +1,37 @@
+# Demo: Cloudflare Worker provii-agegate Edge Injection
+#
+# Reference implementation showing HTMLRewriter-based injection of provii-agegate
+# into HTML responses. See README.md for setup and testing instructions.
+#
+# This Worker intercepts all HTML responses from the origin, injects FOUC
+# prevention styles into <head>, and appends the provii-agegate script before </body>.
+# Non-HTML responses pass through unchanged.
+
+name = "demo-cloudflare-worker"
+main = "src/index.ts"
+compatibility_date = "2025-11-17"
+
+# Point this at your origin server. For local testing, wrangler dev proxies
+# requests to the upstream defined here.
+# routes = [
+#   { pattern = "your-domain.com/*", zone_name = "your-domain.com" }
+# ]
+
+[vars]
+# Required: your Provii public key from the Partner API
+PROVII_PUBLIC_KEY = "pk_test_demo_provii_2024"
+
+# Required: "production" or "sandbox"
+PROVII_ENVIRONMENT = "sandbox"
+
+# Optional: BCP 47 language code for the age gate UI
+# PROVII_LANG = "en"
+
+# Optional: SRI hash from cdn.provii.app/sdk/provii-agegate/manifest.json
+# PROVII_SRI_HASH = "sha384-..."
+
+# Optional: pin to exact version instead of major version alias
+# PROVII_SDK_VERSION = "1.2.3"
+
+[build]
+command = "npx esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js"

@@ -1,0 +1,649 @@
+# Provii Demos CI Pipeline
+# Multi-platform demo applications build and lint validation
+#
+# This workflow validates all demo platforms:
+# - Backend demos: Node.js, Go, Python, Cloudflare Workers
+# - Mobile apps: Android (Kotlin), iOS (Swift), React Native, Flutter
+# - Web demo: TypeScript/Cloudflare Workers
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE*'
+      - '.gitignore'
+      - 'CHANGELOG*'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE*'
+      - '.gitignore'
+      - 'CHANGELOG*'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================================
+  # Backend Demos - Node.js
+  # ============================================================================
+  backend-nodejs:
+    name: Backend - Node.js
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backends/issuer/nodejs
+          - backends/verifier/nodejs
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '20'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ matrix.project }}-${{ hashFiles(format('{0}/package-lock.json', matrix.project)) }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ matrix.project }}-
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.project }}
+        run: npm ci
+
+      - name: Lint
+        working-directory: ${{ matrix.project }}
+        run: npm run lint --if-present
+
+      - name: Build
+        working-directory: ${{ matrix.project }}
+        run: npm run build
+
+      - name: Test with coverage
+        working-directory: ${{ matrix.project }}
+        run: |
+          # Run tests with coverage.
+          # Scope: core integration functions (HMAC, PKCE, base64url, demo
+          # token validation). The source files execute side effects at
+          # import time (server start), so tests verify the extracted pure
+          # functions that integrators copy into their own projects.
+          npm test
+
+  # ============================================================================
+  # Backend Demos - Cloudflare Workers
+  # ============================================================================
+  backend-cloudflare-workers:
+    name: Backend - Cloudflare Workers
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backends/issuer/cloudflare-workers
+          - backends/verifier/cloudflare-workers
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '20'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-cf-${{ matrix.project }}-${{ hashFiles(format('{0}/package-lock.json', matrix.project)) }}
+          restore-keys: |
+            ${{ runner.os }}-node-cf-${{ matrix.project }}-
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.project }}
+        run: npm ci
+
+      - name: TypeScript type check
+        working-directory: ${{ matrix.project }}
+        run: npx tsc --noEmit
+
+      - name: Test
+        working-directory: ${{ matrix.project }}
+        run: npm test --if-present
+
+  # ============================================================================
+  # Backend Demos - Go
+  # ============================================================================
+  backend-go:
+    name: Backend - Go
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backends/issuer/go
+          - backends/verifier/go
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          # 1.25+: 1.24.x has 5 stdlib advisories that govulncheck reports
+          # against (GO-2026-{4601,4602,4870,4946,4947}). Bumping to 1.25
+          # also lets staticcheck + govulncheck run @latest without
+          # toolchain-not-permitted errors.
+          go-version: '1.25'
+          cache-dependency-path: ${{ matrix.project }}/go.sum
+
+      - name: Download dependencies
+        working-directory: ${{ matrix.project }}
+        run: go mod download
+
+      - name: Verify dependencies
+        working-directory: ${{ matrix.project }}
+        run: go mod verify
+
+      - name: Run go vet
+        working-directory: ${{ matrix.project }}
+        run: go vet ./...
+
+      - name: Run staticcheck
+        uses: dominikh/staticcheck-action@9716614d4101e79b4340dd97b10e54d68234e431 # v1.4.1
+        with:
+          working-directory: ${{ matrix.project }}
+          install-go: false
+
+      - name: Build
+        working-directory: ${{ matrix.project }}
+        run: go build -v ./...
+
+      - name: Test with coverage
+        working-directory: ${{ matrix.project }}
+        run: |
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+
+          # Display coverage summary
+          echo "## Coverage Summary"
+          go tool cover -func=coverage.out | tail -1
+
+          # Enforce coverage threshold (fail if below 85%)
+          # Scope: backend integration logic (HMAC auth, PKCE, validation,
+          # handlers, middleware). Startup functions (main, printBanner) are
+          # extracted to keep the testable surface area high. The 85% gate
+          # requires genuine test coverage of handler and crypto paths.
+          COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+          if [ -n "$COVERAGE" ]; then
+            if (( $(echo "$COVERAGE < 85" | bc -l) )); then
+              echo "::error::Coverage is ${COVERAGE}% (below 85% minimum)"
+              exit 1
+            else
+              echo "Coverage: ${COVERAGE}% (meets 85% threshold)"
+            fi
+          fi
+
+  # ============================================================================
+  # Backend Demos - Python
+  # ============================================================================
+  backend-python:
+    name: Backend - Python
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backends/issuer/python
+          - backends/verifier/python
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.project }}-${{ hashFiles(format('{0}/requirements.txt', matrix.project)) }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.project }}-
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.project }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff mypy pytest pytest-cov
+
+      - name: Lint with ruff
+        working-directory: ${{ matrix.project }}
+        run: ruff check .
+
+      - name: Format check with ruff
+        working-directory: ${{ matrix.project }}
+        run: ruff format --check .
+
+      - name: Type check with mypy
+        working-directory: ${{ matrix.project }}
+        run: mypy . --ignore-missing-imports
+
+      - name: Test with coverage
+        working-directory: ${{ matrix.project }}
+        run: |
+          # Run pytest with coverage if tests exist.
+          # Scope: backend integration logic (HMAC auth, PKCE, validation,
+          # handlers). Startup code, httpx client calls, and __main__ blocks
+          # are excluded from the effective coverage calculation.
+          if [ -d "tests" ] || find . -name "test_*.py" -o -name "*_test.py" | grep -q .; then
+            pytest --cov=main --cov-report=term-missing --cov-fail-under=85 -v
+          else
+            echo "No tests found, skipping coverage"
+          fi
+
+  # ============================================================================
+  # Web Demo - provii-agegate
+  # ============================================================================
+  web-demo:
+    name: Web Demo - provii-agegate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '20'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-web-demo-${{ hashFiles('demo-web-provii-agegate/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-web-demo-
+
+      - name: Install dependencies
+        working-directory: demo-web-provii-agegate
+        run: npm ci
+
+      - name: Lint
+        working-directory: demo-web-provii-agegate
+        run: npm run lint
+
+      - name: TypeScript type check
+        working-directory: demo-web-provii-agegate
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: demo-web-provii-agegate
+        run: npm run build
+
+  # ============================================================================
+  # Mobile Apps - Android (Kotlin)
+  # ============================================================================
+  mobile-android:
+    name: Mobile - Android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - apps/android/issuer
+          - apps/android/verifier
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ matrix.project }}-${{ hashFiles(format('{0}/**/*.gradle*', matrix.project), format('{0}/**/gradle-wrapper.properties', matrix.project)) }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-${{ matrix.project }}-
+
+      - name: Grant execute permission for gradlew
+        working-directory: ${{ matrix.project }}
+        run: chmod +x gradlew
+
+      - name: Lint with detekt
+        working-directory: ${{ matrix.project }}
+        run: ./gradlew detekt
+
+      - name: Android Lint
+        working-directory: ${{ matrix.project }}
+        run: ./gradlew lint
+
+      - name: Build debug APK
+        working-directory: ${{ matrix.project }}
+        run: ./gradlew assembleDebug
+
+      - name: Run unit tests
+        working-directory: ${{ matrix.project }}
+        run: ./gradlew test
+
+  # ============================================================================
+  # Mobile Apps - iOS (Swift)
+  # ============================================================================
+  mobile-ios:
+    name: Mobile - iOS
+    if: github.actor != 'dependabot[bot]'
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - apps/ios/ProviiIssuerDemo
+          - apps/ios/ProviiVerifierDemo
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Select Xcode version
+        run: |
+          # Use default Xcode on runner, or find available version
+          if [ -d "/Applications/Xcode_16.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_16.1.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_16.0.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+          elif [ -d "/Applications/Xcode.app" ]; then
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          fi
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run SwiftLint
+        working-directory: ${{ matrix.project }}
+        run: swiftlint lint --strict
+
+      - name: Build iOS app
+        working-directory: ${{ matrix.project }}
+        run: |
+          PROJECT_NAME=$(basename "${{ matrix.project }}")
+
+          # Build for generic iOS Simulator (no specific device needed)
+          xcodebuild build \
+            -project "${PROJECT_NAME}.xcodeproj" \
+            -scheme "${PROJECT_NAME}" \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+  # ============================================================================
+  # Mobile Apps - React Native
+  # ============================================================================
+  mobile-react-native:
+    name: Mobile - React Native
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - apps/react-native/issuer
+          - apps/react-native/verifier
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '20'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-rn-${{ matrix.project }}-${{ hashFiles(format('{0}/package-lock.json', matrix.project)) }}
+          restore-keys: |
+            ${{ runner.os }}-node-rn-${{ matrix.project }}-
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.project }}
+        run: npm ci
+
+      - name: Lint
+        working-directory: ${{ matrix.project }}
+        run: npm run lint --if-present
+
+      - name: TypeScript type check
+        working-directory: ${{ matrix.project }}
+        run: npx tsc --noEmit
+
+      - name: Test
+        working-directory: ${{ matrix.project }}
+        run: npm test --if-present
+
+  # ============================================================================
+  # Mobile Apps - Flutter
+  # ============================================================================
+  mobile-flutter:
+    name: Mobile - Flutter
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - apps/flutter/provii_issuer_demo
+          - apps/flutter/provii_verifier_demo
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Flutter
+        run: |
+          FLUTTER_VERSION="3.24.0"
+          FLUTTER_ARCHIVE="flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+          curl -sSLfO "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/${FLUTTER_ARCHIVE}"
+          tar xf "${FLUTTER_ARCHIVE}"
+          echo "${GITHUB_WORKSPACE}/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Flutter
+        run: flutter --version
+
+      - name: Get dependencies
+        working-directory: ${{ matrix.project }}
+        run: flutter pub get
+
+      - name: Analyze code
+        working-directory: ${{ matrix.project }}
+        run: flutter analyze
+
+      - name: Check formatting
+        working-directory: ${{ matrix.project }}
+        run: dart format --set-exit-if-changed .
+
+      - name: Run tests
+        working-directory: ${{ matrix.project }}
+        run: flutter test
+
+  # ============================================================================
+  # Hooks Enforcement
+  # ============================================================================
+  # Makes the `.githooks/README.md` claim truthful. A fresh clone or linked
+  # worktree lands with `core.hooksPath` unset, which silently disables the
+  # pre-commit worktree isolation hook. This job asserts that the
+  # tracked hook machinery is present, executable, and that
+  # `scripts/bootstrap-hooks.sh` actually sets `core.hooksPath=.githooks`
+  # when run. Gating `ci-success` on this job closes the failure mode
+  # the hook was built to prevent.
+  hooks-enforcement:
+    name: Hooks Enforcement
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Assert tracked hooks machinery is present and executable
+        run: |
+          set -euo pipefail
+          for f in .githooks/pre-commit scripts/bootstrap-hooks.sh scripts/check-worktree-isolation.sh; do
+            if [[ ! -f "${f}" ]]; then
+              echo "::error file=${f}::required file missing"
+              exit 1
+            fi
+            if [[ ! -x "${f}" ]]; then
+              echo "::error file=${f}::required file is not executable"
+              exit 1
+            fi
+          done
+          echo "hook machinery present and executable"
+
+      - name: Run bootstrap-hooks.sh and assert core.hooksPath is set
+        run: |
+          set -euo pipefail
+          ./scripts/bootstrap-hooks.sh
+          configured="$(git config --get core.hooksPath || true)"
+          if [[ "${configured}" != ".githooks" ]]; then
+            echo "::error::core.hooksPath is '${configured}', expected '.githooks'"
+            exit 1
+          fi
+          echo "core.hooksPath = ${configured}"
+
+  # ============================================================================
+  # Summary Job
+  # ============================================================================
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs:
+      - backend-nodejs
+      - backend-cloudflare-workers
+      - backend-go
+      - backend-python
+      - web-demo
+      - mobile-android
+      - mobile-ios
+      - mobile-react-native
+      - mobile-flutter
+      - hooks-enforcement
+    if: always()
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.backend-nodejs.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-cloudflare-workers.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-go.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-python.result }}" == "failure" ]] || \
+             [[ "${{ needs.web-demo.result }}" == "failure" ]] || \
+             [[ "${{ needs.mobile-android.result }}" == "failure" ]] || \
+             [[ "${{ needs.mobile-ios.result }}" == "failure" ]] || \
+             [[ "${{ needs.mobile-react-native.result }}" == "failure" ]] || \
+             [[ "${{ needs.mobile-flutter.result }}" == "failure" ]] || \
+             [[ "${{ needs.hooks-enforcement.result }}" == "failure" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "All CI checks passed!"

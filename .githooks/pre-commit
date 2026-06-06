@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Maelstrom AI Pty Ltd
+#
+# Pre-commit hook: enforce worktree isolation at commit time.
+#
+# This hook mechanically enforces the rule: every commit runs the `self`
+# check first and blocks on collision.
+#
+# Install path is `.githooks/pre-commit` (tracked in the repo). Wire with:
+#
+#     git config core.hooksPath .githooks
+#
+# Doing it via core.hooksPath rather than `.git/hooks/` means:
+#   - the hook is version-controlled and travels with the branch;
+#   - a new clone picks it up after a single `git config` line;
+#   - operators can audit what runs on commit by reading the tree.
+#
+# Failure behaviour. Exit 1 aborts the commit with the script's stderr
+# message visible. The operator can inspect, resolve, and re-commit. There
+# is no bypass flag inside the hook itself; `git commit --no-verify`
+# remains the escape hatch but is an explicit choice, not the default.
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+isolation_script="${repo_root}/scripts/check-worktree-isolation.sh"
+
+if [[ ! -x "${isolation_script}" ]]; then
+  printf 'pre-commit: worktree isolation script missing or not executable:\n' >&2
+  printf '  %s\n' "${isolation_script}" >&2
+  exit 1
+fi
+
+# Run the `self` mode. It fails hard on index.lock in the current worktree
+# (strong collision signal) and non-zero on unresolvable cwd.
+if ! "${isolation_script}" self; then
+  printf '\npre-commit BLOCKED: worktree isolation check failed.\n' >&2
+  printf 'Resolve the collision then re-run the commit.\n' >&2
+  printf 'To bypass once with explicit intent: git commit --no-verify\n' >&2
+  exit 1
+fi

@@ -1,0 +1,172 @@
+# Demo Web App - provii-agegate Integration
+#
+# Two surfaces share this Worker script:
+#
+#   1. Top-level (production) deployment serves
+#      over.provii.app, under.provii.app, and
+#      playground.provii.app. The playground subdomain mints real
+#      sandbox credentials per session via the playground's own KV +
+#      `register-test-origin` upstream call.
+#   2. `[env.sandbox]` deployment serves docs.provii.app/api/* only.
+#      The docs gateway hosts the TestInWallet widget on
+#      /guides/mobile-verification and self-bootstraps a sandbox verifier
+#      credential by calling `register-test-origin` once per 72-hour window
+#      and caching the `(client_id, hmac_secret)` triple in `DOCS_SESSIONS`
+#      KV under `docs-bootstrap-cred:v1`. No per-credential operator
+#      provisioning is required; the gateway shares the playground's
+#      `SANDBOX_API_KEY` binding to authenticate the bootstrap call.
+#
+# Operator action: provisioning `SANDBOX_API_KEY` is the only step needed
+# for either surface. There is no separate static credential to maintain.
+
+name = "demo-web-provii-agegate"
+main = "src/index.ts"
+compatibility_date = "2025-11-17"
+account_id = "cdc726d78268c6e92f5f21eaaa75c7de"
+workers_dev = false
+
+# Custom domains: Cloudflare auto-manages DNS + SSL for each hostname
+routes = [
+    { pattern = "over.provii.app", custom_domain = true },
+    { pattern = "under.provii.app", custom_domain = true },
+    { pattern = "playground.provii.app", custom_domain = true },
+]
+
+# Static assets
+[site]
+bucket = "./public"
+
+[build]
+command = "npm run build"
+
+# Cron: refresh the shared hosted demo key per subdomain (over/under) so page
+# loads only read it from KV, never provision per visitor. 72h key TTL, so a
+# 6-hourly refresh keeps it valid with a wide margin.
+[triggers]
+crons = ["0 */6 * * *"]
+
+# ── Secrets Store (top-level / playground) ───────────────────────────
+# These bindings are consumed only by the playground handler in
+# `src/index.ts`. Docs-gateway-only bindings live under [env.sandbox]
+# below.
+
+[[secrets_store_secrets]]
+binding = "DEMO_TOKEN_SECRET"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "DEMO_TOKEN_SECRET"
+
+# Sandbox provii-verifier key used by the PLAYGROUND handler when minting real
+# per-session credentials via `register-test-origin`. Binding name stays
+# SANDBOX_API_KEY (code reads env.SANDBOX_API_KEY) but resolves to the SHARED
+# PROVII_DEMO_VERIFIER_API_KEY_SANDBOX that provii-verifier + provii-issuer
+# validate the X-Docs-Hmac against. The rebrand re-minted this shared key and
+# updated those two but missed the playground, so it signed with the stale
+# SANDBOX_API_KEY and register-test-origin returned 401 INVALID_HMAC.
+[[secrets_store_secrets]]
+binding = "SANDBOX_API_KEY"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "PROVII_DEMO_VERIFIER_API_KEY_SANDBOX"
+
+# ── Playground Session Storage (W4) ──────────────────────────────────
+# KV namespace for ephemeral playground environment credentials.
+# TTL: 24h. Keyed by playground:{environmentId}.
+[[kv_namespaces]]
+binding = "PLAYGROUND_SESSIONS"
+id = "0336740149e54038aa940e093954a339"
+
+# ── Sandbox Environment ──────────────────────────────────────────────
+# The docs gateway lives ONLY on the sandbox env. docs.provii.app/api/*
+# is served by this env's Worker (sandbox-demo-web-provii-agegate) because
+# docs widgets are tutorials that must call sandbox upstreams exclusively.
+# Production (top-level) only serves over/under/playground.
+[env.sandbox]
+name = "sandbox-demo-web-provii-agegate"
+workers_dev = false
+routes = [
+    { pattern = "docs.provii.app/api/*", zone_name = "provii.app" },
+]
+
+# Playground demo-token secret, sandbox env. Mirrors the top-level entry so
+# the same Worker script keeps booting under either deployment target.
+[[env.sandbox.secrets_store_secrets]]
+binding = "DEMO_TOKEN_SECRET"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "DEMO_TOKEN_SECRET"
+
+# Docs gateway log sanitiser key, sandbox env (W4-S13).
+[[env.sandbox.secrets_store_secrets]]
+binding = "LOG_SANITIZER_KEY"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "LOG_SANITIZER_KEY"
+
+# HMAC-SHA-256 key used to sign the __Host-docs_session bearer cookie.
+# Rotated via the bearer-kid rotation runbook.
+[[env.sandbox.secrets_store_secrets]]
+binding = "DOCS_SESSION_HMAC_KEY"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "DOCS_SESSION_HMAC_KEY_SANDBOX"
+
+# Sandbox provii-verifier API key. Used by the docs gateway's self-bootstrap
+# path (`getOrBootstrapDocsSandboxCredential`) to authenticate the
+# `register-test-origin` call that mints the gateway's signing credential.
+# Same Secrets Store entry the playground reads at the top level; bound
+# here under env.sandbox so the docs gateway deployment can reach it.
+[[env.sandbox.secrets_store_secrets]]
+binding = "SANDBOX_API_KEY"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "PROVII_DEMO_VERIFIER_API_KEY_SANDBOX"
+
+# ── Playground Sessions KV, sandbox env ──────────────────────────────
+# Same physical namespace as production playground; the Worker script
+# loads it under either deployment target.
+[[env.sandbox.kv_namespaces]]
+binding = "PLAYGROUND_SESSIONS"
+id = "0336740149e54038aa940e093954a339"
+
+# ── Docs Gateway Session Storage (W9 BL-2 split) ─────────────────────
+# Disjoint physical namespace from any playground/production KV. Holds
+# bearer sessions, challenges, rate-limit counters, and the bootstrapped
+# sandbox verifier credential record (`docs-bootstrap-cred:v1`) scoped to
+# docs.provii.app/api/*. Per-session credential records
+# (`docs-cred-v:`, `docs-cred-i:`) are no longer written.
+[[env.sandbox.kv_namespaces]]
+binding = "DOCS_SESSIONS"
+id = "c200df69f2f0405e80d522753a2e3113"
+preview_id = "32dfce4377114097a96750a1b5ae3a3a"
+
+# ── Docs Gateway Poll Rate Limiter ───────────────────────────────────
+# Cloudflare Rate Limiting API binding for GET /api/status/:id (Tier B of
+# AR-C3 remediation). 10-second sliding window per bearer+challenge pair.
+# namespace_id is a per-Worker numeric identifier.
+[[env.sandbox.unsafe.bindings]]
+name = "DOCS_STATUS_POLL_LIMITER"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 6, period = 10 }
+
+# ── Docs Gateway Service Bindings ────────────────────────────────────
+# Private service-to-service binding to the sandbox provii-verifier Worker.
+# The challenge mint and status polling routes call into it via
+# `env.VERIFIER_API_SANDBOX.fetch(...)` so the traffic stays inside
+# Cloudflare's network and never traverses the public DNS name.
+# Sandbox-only by construction; production demo hosts must not talk to
+# sandbox upstreams.
+#
+# The previous `ISSUER_API_SANDBOX` service binding was removed alongside
+# the per-session issuer-credential mint surface; the docs gateway no
+# longer reaches provii-issuer directly.
+[[env.sandbox.services]]
+binding = "VERIFIER_API_SANDBOX"
+service = "sandbox-verify"
+
+# Mobile sandbox vars, sandbox env. Flips AAGUID to "dev" so
+# the sandbox provii-mobile build passes Apple App Attest against a
+# development-signed binary. Android package name matches production.
+# When sandbox-signed Android builds arrive, set
+# MOBILE_ANDROID_PINNED_ROOT_DER_B64 here to override the production root.
+[env.sandbox.vars]
+MOBILE_APP_BUNDLE_ID = "com.provii.wallet"
+MOBILE_APPLE_AAGUID_ENV = "dev"
+MOBILE_ANDROID_PACKAGE_NAME = "com.provii.wallet"
+# MED-10/11: Configurable hosts for rebrand. Defaults in source code match these values.
+OPENAPI_UPSTREAM_ORIGIN = "https://provenance.provii.app"

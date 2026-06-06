@@ -1,0 +1,14 @@
+name = "provii-provenance"
+main = "src/index.ts"
+compatibility_date = "2025-11-17"
+account_id = "cdc726d78268c6e92f5f21eaaa75c7de"
+workers_dev = false
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "provii-api-specs"
+
+[env.production]
+routes = [
+  { pattern = "provenance.provii.app", custom_domain = true }
+]

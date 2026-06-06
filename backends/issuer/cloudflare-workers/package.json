@@ -1,0 +1,32 @@
+{
+  "name": "provii-issuer-demo-worker",
+  "version": "1.0.0",
+  "description": "Demo backend showing how third-party issuers (banks) integrate with Provii - Cloudflare Workers version",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:sandbox": "wrangler deploy --env sandbox",
+    "test": "echo \"No tests configured - add tests for production use\" && exit 0",
+    "cf-typegen": "wrangler types",
+    "generate-openapi": "npx tsx src/openapi.ts > openapi.json"
+  },
+  "keywords": [
+    "provii",
+    "issuer",
+    "age-verification",
+    "cloudflare-workers",
+    "hmac"
+  ],
+  "author": "Provii",
+  "license": "MIT OR Apache-2.0",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260228.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.67.0"
+  },
+  "dependencies": {
+    "hono": "^4.12.14"
+  }
+}

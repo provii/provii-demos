@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Security Configuration for Provii Issuer Demo App.
+
+    This configuration:
+    - Enforces HTTPS for all network traffic by default
+    - Only allows cleartext (HTTP) traffic to 10.0.2.2 (Android emulator localhost)
+      in debug builds for local development testing
+
+    For production apps, enterprises should remove the debug-overrides entirely
+    and use HTTPS exclusively.
+-->
+<network-security-config>
+    <!-- Default: require HTTPS for all domains -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Debug only: allow cleartext to Android emulator localhost for local development -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
+
+    <!-- Allow cleartext only to emulator localhost (10.0.2.2) for local backend testing -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

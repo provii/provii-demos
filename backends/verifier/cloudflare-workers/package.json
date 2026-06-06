@@ -1,0 +1,31 @@
+{
+  "name": "provii-verifier-demo-worker",
+  "version": "1.0.0",
+  "description": "Demo backend showing how third-party verifiers (apps) integrate with Provii - Cloudflare Workers version",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:sandbox": "wrangler deploy --env sandbox",
+    "test": "echo \"No tests configured - add tests for production use\" && exit 0",
+    "cf-typegen": "wrangler types"
+  },
+  "keywords": [
+    "provii",
+    "verifier",
+    "age-verification",
+    "cloudflare-workers",
+    "pkce",
+    "hmac"
+  ],
+  "author": "Provii",
+  "license": "MIT OR Apache-2.0",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260205.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.62.0"
+  },
+  "dependencies": {
+    "hono": "^4.11.10"
+  }
+}

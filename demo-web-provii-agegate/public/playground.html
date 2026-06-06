@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#0091C7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)">
+    <title>Sandbox Credentials - Provii</title>
+    <meta name="description" content="Mint sandbox credentials for the Provii Age Gate SDK or for an Issuing Party. Per-developer creds, no shared keys.">
+    <link rel="preload" href="/fonts/Manrope-Variable.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/demo.css">
+    <style>
+        .section-hidden { display: none; }
+        [hidden] { display: none !important; }
+
+        .pg-main {
+            flex: 1;
+            max-width: 820px;
+            width: 100%;
+            margin: 0 auto;
+            padding: var(--demo-space-2xl) var(--demo-space-md) var(--demo-space-3xl);
+        }
+
+        .pg-intro {
+            text-align: center;
+            margin-bottom: var(--demo-space-xl);
+        }
+
+        .pg-intro__title {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin-bottom: var(--demo-space-sm);
+        }
+
+        .pg-intro__subtitle {
+            font-size: 1.0625rem;
+            line-height: 1.7;
+            color: var(--demo-text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Top-level role tabs: "Set up a Verifier" | "Set up an Issuer".
+           Sits above the form/results layout, controlled by hash routing. */
+        .pg-role-tabs {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: var(--demo-space-sm);
+            margin-bottom: var(--demo-space-lg);
+        }
+
+        .pg-role-tab {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            padding: var(--demo-space-md);
+            border: 1px solid var(--demo-card-border);
+            border-radius: var(--demo-radius-sm);
+            background: var(--demo-card-bg);
+            color: var(--demo-text);
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            font-family: inherit;
+        }
+
+        .pg-role-tab:hover {
+            border-color: var(--demo-card-border-hover);
+        }
+
+        .pg-role-tab:focus-visible {
+            outline: 2px solid var(--demo-primary);
+            outline-offset: 2px;
+        }
+
+        .pg-role-tab[aria-selected="true"] {
+            border-color: var(--demo-primary);
+            box-shadow: 0 0 0 1px var(--demo-primary) inset;
+        }
+
+        .pg-role-tab__title {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .pg-role-tab__sub {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--demo-text-secondary);
+        }
+
+        .pg-form-card {
+            padding: var(--demo-space-xl);
+            margin-bottom: var(--demo-space-lg);
+        }
+
+        .pg-form-card h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: var(--demo-space-lg);
+            text-align: center;
+        }
+
+        .pg-field-group {
+            margin-bottom: var(--demo-space-lg);
+        }
+
+        .pg-rate-note {
+            font-size: 0.8125rem;
+            color: var(--demo-text-muted);
+            margin-top: var(--demo-space-sm);
+            text-align: center;
+        }
+
+        .pg-section-card {
+            padding: var(--demo-space-xl);
+            margin-bottom: var(--demo-space-lg);
+        }
+
+        .pg-section-card h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: var(--demo-space-sm);
+        }
+
+        .pg-section-card p {
+            color: var(--demo-text-secondary);
+            font-size: 0.9375rem;
+            margin-bottom: var(--demo-space-md);
+        }
+
+        .pg-policy-banner {
+            background: linear-gradient(135deg, rgba(0, 145, 199, 0.12), rgba(91, 61, 245, 0.08));
+            border: 1px solid rgba(0, 145, 199, 0.25);
+            border-radius: var(--demo-radius-sm);
+            padding: var(--demo-space-sm) var(--demo-space-md);
+            margin-bottom: var(--demo-space-lg);
+            font-weight: 600;
+            font-size: 0.9375rem;
+            text-align: center;
+        }
+
+        /* Yellow banner that appears when expires_at is within 4 hours.
+           Shared by both verifier and issuer panels. */
+        .pg-expiry-warning {
+            background: rgba(234, 179, 8, 0.12);
+            border: 1px solid rgba(234, 179, 8, 0.45);
+            border-radius: var(--demo-radius-sm);
+            padding: var(--demo-space-sm) var(--demo-space-md);
+            margin-bottom: var(--demo-space-md);
+            font-size: 0.9375rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--demo-space-md);
+            flex-wrap: wrap;
+        }
+
+        .pg-expiry-warning strong {
+            color: var(--demo-text);
+        }
+
+        .pg-time-remaining {
+            font-size: 0.8125rem;
+            color: var(--demo-text-muted);
+            margin-left: var(--demo-space-sm);
+        }
+
+        .pg-code-panel {
+            position: relative;
+        }
+
+        .pg-code-panel[aria-hidden="true"] {
+            display: none;
+        }
+
+        .pg-code-panel pre {
+            margin: 0;
+            padding: var(--demo-space-md);
+            background: var(--demo-code-bg);
+            border: 1px solid var(--demo-code-border);
+            border-radius: var(--demo-radius-sm);
+            overflow-x: auto;
+        }
+
+        .pg-code-panel code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.8125rem;
+            line-height: 1.6;
+            white-space: pre;
+        }
+
+        .pg-code-copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+        }
+
+        .pg-copy-all-row {
+            display: flex;
+            align-items: center;
+            gap: var(--demo-space-md);
+            margin-bottom: var(--demo-space-md);
+            flex-wrap: wrap;
+        }
+
+        .pg-copy-all-status {
+            font-size: 0.8125rem;
+            color: var(--demo-success);
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .pg-copy-all-status[data-visible="true"] {
+            opacity: 1;
+        }
+
+        .form-alert {
+            background: var(--demo-error-bg);
+            border: 1px solid var(--demo-error);
+            border-radius: var(--demo-radius-sm);
+            padding: var(--demo-space-sm) var(--demo-space-md);
+            color: var(--demo-error);
+            font-size: 0.9375rem;
+            margin-bottom: var(--demo-space-md);
+            display: none;
+        }
+
+        .field-error {
+            color: var(--demo-error);
+            font-size: 0.875rem;
+            margin-top: var(--demo-space-xs);
+            display: none;
+        }
+
+        .pg-help {
+            text-align: center;
+            margin-top: var(--demo-space-lg);
+        }
+
+        .pg-help a {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--demo-text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .pg-help a:hover {
+            color: var(--demo-primary);
+        }
+
+        /* Wallet-test callout: links to the 6-tap walkthrough. Used on both
+           role panels so the routing path to a wallet test is one click. */
+        .pg-wallet-callout {
+            background: linear-gradient(135deg, rgba(0, 145, 199, 0.08), rgba(182, 100, 248, 0.06));
+            border: 1px solid var(--demo-card-border-hover);
+            border-radius: var(--demo-radius-sm);
+            padding: var(--demo-space-md);
+            margin-bottom: var(--demo-space-lg);
+            display: flex;
+            gap: var(--demo-space-md);
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .pg-wallet-callout p {
+            margin: 0;
+            color: var(--demo-text);
+            font-size: 0.9375rem;
+        }
+
+        @media (max-width: 600px) {
+            .pg-main {
+                padding: var(--demo-space-lg) var(--demo-space-md) var(--demo-space-2xl);
+            }
+            .pg-form-card, .pg-section-card {
+                padding: var(--demo-space-lg) var(--demo-space-md);
+            }
+            .pg-intro__title { font-size: 1.5rem; }
+        }
+
+        @media (min-width: 900px) {
+            .pg-intro__title { font-size: 2.5rem; }
+        }
+
+        /* Mode picker (Simple / Expert / Mobile) inside the verifier panel. */
+        .pg-mode-picker {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: var(--demo-space-sm);
+            margin-bottom: var(--demo-space-md);
+        }
+
+        .pg-mode-card {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            padding: var(--demo-space-md);
+            border: 1px solid var(--demo-card-border);
+            border-radius: var(--demo-radius-sm);
+            background: var(--demo-card-bg);
+            color: var(--demo-text);
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+        }
+
+        .pg-mode-card:hover {
+            border-color: var(--demo-card-border-hover);
+        }
+
+        .pg-mode-card:focus-visible {
+            outline: 2px solid var(--demo-primary);
+            outline-offset: 2px;
+        }
+
+        .pg-mode-card[aria-selected="true"] {
+            border-color: var(--demo-primary);
+            box-shadow: 0 0 0 1px var(--demo-primary) inset;
+        }
+
+        .pg-mode-card__title {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .pg-mode-card__sub {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--demo-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .pg-mode-card__hint {
+            font-size: 0.8125rem;
+            color: var(--demo-text-muted);
+            margin-top: 4px;
+        }
+
+        .pg-mode-panel[hidden] {
+            display: none;
+        }
+
+        .pg-mode-hint {
+            font-size: 0.875rem;
+            color: var(--demo-text-muted);
+            margin: 0 0 12px 0;
+            padding: 10px 14px;
+            border-left: 3px solid var(--demo-accent, #5b8def);
+            background: rgba(91, 141, 239, 0.08);
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+
+        .pg-inline-link {
+            background: none;
+            border: none;
+            padding: 0;
+            color: var(--demo-accent, #5b8def);
+            font: inherit;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .pg-inline-link:hover,
+        .pg-inline-link:focus {
+            text-decoration: none;
+            outline: 2px solid var(--demo-accent, #5b8def);
+            outline-offset: 2px;
+        }
+
+        .demo-credential[hidden] {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .pg-mode-picker {
+                grid-template-columns: 1fr;
+            }
+            .pg-role-tabs {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="demo-bg demo-page-enter">
+    <a href="#main-content" class="demo-skip-link">Skip to main content</a>
+
+    <header class="demo-header" role="banner">
+      <nav class="demo-header__inner" aria-label="Site navigation">
+        <a href="https://provii.app" class="demo-logo" aria-label="Provii Wallet home">
+          <span class="demo-logo__text demo-gradient-text">Provii Wallet</span>
+        </a>
+        <div class="demo-header__links">
+          <a href="https://over.provii.app" class="demo-header__link">Over 18 demo</a>
+          <a href="https://under.provii.app" class="demo-header__link">Under 16 demo</a>
+          <a href="https://docs.provii.app" class="demo-header__link">Docs</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main-content" class="pg-main">
+        <div class="pg-intro">
+            <h1 class="pg-intro__title">Sandbox <span class="demo-gradient-text">Credentials</span></h1>
+            <p class="pg-intro__subtitle">
+                Per-developer sandbox credentials. Pick a role, mint your own keys, paste the snippet wherever you need it. No shared bootstrap creds.
+            </p>
+        </div>
+
+        <div id="live-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+        <div class="pg-role-tabs" role="tablist" aria-label="Sandbox role">
+            <button type="button" role="tab" class="pg-role-tab" id="role-tab-verifier"
+                    data-role="verifier" aria-selected="true" aria-controls="role-panel-verifier" tabindex="0">
+                <span class="pg-role-tab__title">Set up a Relying Party (verifier)</span>
+                <span class="pg-role-tab__sub">Mint pk_test + HMAC for age verification</span>
+            </button>
+            <button type="button" role="tab" class="pg-role-tab" id="role-tab-issuer"
+                    data-role="issuer" aria-selected="false" aria-controls="role-panel-issuer" tabindex="-1">
+                <span class="pg-role-tab__title">Set up an Issuing Party</span>
+                <span class="pg-role-tab__sub">Mint client_id + HMAC for the Issuer</span>
+            </button>
+        </div>
+
+        <!-- ========================================================== -->
+        <!-- Role panel: Verifier                                        -->
+        <!-- ========================================================== -->
+        <section role="tabpanel" id="role-panel-verifier" aria-labelledby="role-tab-verifier">
+
+            <section id="section-verifier-form" aria-labelledby="form-heading">
+                <div class="pg-form-card demo-card">
+                    <h2 id="form-heading">Configure policy</h2>
+
+                    <div id="form-alert" class="form-alert" role="alert"></div>
+
+                    <div class="pg-field-group">
+                        <label class="demo-label" id="age-label">Age threshold</label>
+                        <select id="age-select" aria-labelledby="age-label">
+                            <option value="5">5</option>
+                            <option value="8">8</option>
+                            <option value="10">10</option>
+                            <option value="12">12</option>
+                            <option value="13">13</option>
+                            <option value="14">14</option>
+                            <option value="15">15</option>
+                            <option value="16">16</option>
+                            <option value="17">17</option>
+                            <option value="18" selected>18</option>
+                            <option value="19">19</option>
+                            <option value="20">20</option>
+                            <option value="21">21</option>
+                            <option value="25">25</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+
+                        <div id="custom-age-wrapper" style="display:none; margin-top:12px;">
+                            <label for="age-input" class="demo-label">Custom age (5 to 25)</label>
+                            <input type="number" id="age-input" class="demo-input" min="5" max="25" placeholder="e.g. 18"
+                                   aria-describedby="age-error" style="max-width:160px;">
+                            <div id="age-error" class="field-error"></div>
+                        </div>
+                    </div>
+
+                    <div class="pg-field-group">
+                        <label class="demo-label">Direction</label>
+                        <div class="demo-toggle">
+                            <label class="demo-toggle__option demo-toggle__option--active" id="toggle-over">
+                                <input type="radio" name="direction" value="over" checked class="sr-only">
+                                Over (minimum age)
+                            </label>
+                            <label class="demo-toggle__option" id="toggle-under">
+                                <input type="radio" name="direction" value="under" class="sr-only">
+                                Under (maximum age)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="text-align:center;">
+                        <button type="button" id="create-btn" class="demo-btn-primary demo-pulse" style="width:100%; max-width:360px;">
+                            Mint sandbox credentials
+                        </button>
+                        <p class="pg-rate-note">Limited to 5 mints per hour. Credentials last 72 hours.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-verifier-results" class="section-hidden" aria-labelledby="code-heading">
+
+                <div id="verifier-expiry-warning" class="pg-expiry-warning" hidden>
+                    <span><strong>This credential expires soon.</strong> <span id="verifier-expiry-relative"></span></span>
+                    <button type="button" id="verifier-remint-btn" class="demo-btn-secondary">Mint new</button>
+                </div>
+
+                <div class="pg-section-card demo-card">
+                    <h2 id="code-heading">Integration snippets</h2>
+                    <p>Pick the integration mode that matches your product, then choose a language.</p>
+
+                    <div class="pg-mode-picker" role="tablist" aria-label="Integration mode">
+                        <button type="button" role="tab" class="pg-mode-card mode-tab" id="mode-tab-simple"
+                                data-mode="simple" aria-selected="true" aria-controls="mode-panel-simple" tabindex="0">
+                            <span class="pg-mode-card__title">Simple</span>
+                            <span class="pg-mode-card__sub">Website</span>
+                            <span class="pg-mode-card__hint">Drop-in script tag using provii-agegate.</span>
+                        </button>
+                        <button type="button" role="tab" class="pg-mode-card mode-tab" id="mode-tab-expert"
+                                data-mode="expert" aria-selected="false" aria-controls="mode-panel-expert" tabindex="-1">
+                            <span class="pg-mode-card__title">Expert</span>
+                            <span class="pg-mode-card__sub">Backend API</span>
+                            <span class="pg-mode-card__hint">HMAC, nonce and PKCE from your server.</span>
+                        </button>
+                        <button type="button" role="tab" class="pg-mode-card mode-tab" id="mode-tab-mobile"
+                                data-mode="mobile" aria-selected="false" aria-controls="mode-panel-mobile" tabindex="-1">
+                            <span class="pg-mode-card__title">Mobile</span>
+                            <span class="pg-mode-card__sub">Deep links</span>
+                            <span class="pg-mode-card__hint">Native apps that hand off to Provii Wallet.</span>
+                        </button>
+                    </div>
+
+                    <div role="tabpanel" id="mode-panel-simple" class="pg-mode-panel mode-panel" aria-labelledby="mode-tab-simple">
+                        <div class="demo-tabs" role="tablist" aria-label="Simple mode language">
+                            <button role="tab" class="demo-tab demo-tab--active code-tab" data-mode="simple"
+                                    id="tab-simple-agegate" aria-selected="true" aria-controls="panel-simple-agegate"
+                                    tabindex="0">HTML</button>
+                        </div>
+                        <div role="tabpanel" class="pg-code-panel code-panel" id="panel-simple-agegate"
+                             aria-labelledby="tab-simple-agegate" aria-hidden="false">
+                            <pre><code id="code-simple-agegate"></code></pre>
+                            <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                    data-copy-target="code-simple-agegate"
+                                    aria-label="Copy HTML script tag snippet to clipboard">Copy</button>
+                        </div>
+                    </div>
+
+                    <div role="tabpanel" id="mode-panel-expert" class="pg-mode-panel mode-panel" aria-labelledby="mode-tab-expert" hidden>
+                        <div class="demo-tabs" role="tablist" aria-label="Expert mode language">
+                            <button role="tab" class="demo-tab demo-tab--active code-tab" data-mode="expert"
+                                    id="tab-expert-curl" aria-selected="true" aria-controls="panel-expert-curl"
+                                    tabindex="0">cURL</button>
+                            <button role="tab" class="demo-tab code-tab" data-mode="expert"
+                                    id="tab-expert-nodejs" aria-selected="false" aria-controls="panel-expert-nodejs"
+                                    tabindex="-1">Node.js</button>
+                            <button role="tab" class="demo-tab code-tab" data-mode="expert"
+                                    id="tab-expert-python" aria-selected="false" aria-controls="panel-expert-python"
+                                    tabindex="-1">Python</button>
+                            <button role="tab" class="demo-tab code-tab" data-mode="expert"
+                                    id="tab-expert-go" aria-selected="false" aria-controls="panel-expert-go"
+                                    tabindex="-1">Go</button>
+                        </div>
+                        <div role="tabpanel" class="pg-code-panel code-panel" id="panel-expert-curl"
+                             aria-labelledby="tab-expert-curl" aria-hidden="false">
+                            <pre><code id="code-expert-curl"></code></pre>
+                            <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                    data-copy-target="code-expert-curl"
+                                    aria-label="Copy cURL snippet to clipboard">Copy</button>
+                        </div>
+                        <div role="tabpanel" class="pg-code-panel code-panel" id="panel-expert-nodejs"
+                             aria-labelledby="tab-expert-nodejs" aria-hidden="true">
+                            <pre><code id="code-expert-nodejs"></code></pre>
+                            <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                    data-copy-target="code-expert-nodejs"
+                                    aria-label="Copy Node.js snippet to clipboard">Copy</button>
+                        </div>
+                        <div role="tabpanel" class="pg-code-panel code-panel" id="panel-expert-python"
+                             aria-labelledby="tab-expert-python" aria-hidden="true">
+                            <pre><code id="code-expert-python"></code></pre>
+                            <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                    data-copy-target="code-expert-python"
+                                    aria-label="Copy Python snippet to clipboard">Copy</button>
+                        </div>
+                        <div role="tabpanel" class="pg-code-panel code-panel" id="panel-expert-go"
+                             aria-labelledby="tab-expert-go" aria-hidden="true">
+                            <pre><code id="code-expert-go"></code></pre>
+                            <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                    data-copy-target="code-expert-go"
+                                    aria-label="Copy Go snippet to clipboard">Copy</button>
+                        </div>
+                    </div>
+
+                    <div role="tabpanel" id="mode-panel-mobile" class="pg-mode-panel mode-panel" aria-labelledby="mode-tab-mobile" hidden>
+                        <p class="pg-mode-hint" id="mobile-mode-hint">
+                            These app-side snippets pair with your backend. See the
+                            <button type="button" class="pg-inline-link" data-target-mode="expert"
+                                    aria-controls="mode-panel-expert">Expert tab</button>
+                            for cURL, Node.js, Python and Go signing recipes.
+                        </p>
+                        <div class="demo-tabs" role="tablist" aria-label="Mobile mode language">
+                            <button role="tab" class="demo-tab demo-tab--active code-tab" data-mode="mobile"
+                                    id="tab-mobile-ios" aria-selected="true" aria-controls="panel-mobile-ios"
+                                    tabindex="0">iOS (Swift)</button>
+                            <button role="tab" class="demo-tab code-tab" data-mode="mobile"
+                                    id="tab-mobile-android" aria-selected="false" aria-controls="panel-mobile-android"
+                                    tabindex="-1">Android (Kotlin)</button>
+                            <button role="tab" class="demo-tab code-tab" data-mode="mobile"
+                                    id="tab-mobile-flutter" aria-selected="false" aria-controls="panel-mobile-flutter"
+                                    tabindex="-1">Flutter (Dart)</button>
+                        </div>
+                        <div role="tabpanel" class="pg-code-panel code-panel" id="panel-mobile-ios"
+                             aria-labelledby="tab-mobile-ios" aria-hidden="false">
+                            <pre><code id="code-mobile-ios"></code></pre>
+                            <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                    data-copy-target="code-mobile-ios"
+                                    aria-label="Copy iOS Swift snippet to clipboard">Copy</button>
+                        </div>
+                        <div role="tabpanel" class="pg-code-panel code-panel" id="panel-mobile-android"
+                             aria-labelledby="tab-mobile-android" aria-hidden="true">
+                            <pre><code id="code-mobile-android"></code></pre>
+                            <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                    data-copy-target="code-mobile-android"
+                                    aria-label="Copy Android Kotlin snippet to clipboard">Copy</button>
+                        </div>
+                        <div role="tabpanel" class="pg-code-panel code-panel" id="panel-mobile-flutter"
+                             aria-labelledby="tab-mobile-flutter" aria-hidden="true">
+                            <pre><code id="code-mobile-flutter"></code></pre>
+                            <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                    data-copy-target="code-mobile-flutter"
+                                    aria-label="Copy Flutter Dart snippet to clipboard">Copy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pg-section-card demo-card">
+                    <div id="policy-banner" class="pg-policy-banner"></div>
+                    <h2 id="results-heading" tabindex="-1">Your credentials</h2>
+                    <p id="credentials-blurb">Origin-agnostic sandbox credentials. Paste the snippet on any host and the SDK will work. Store the HMAC secret server-side, never ship it to the browser.</p>
+                    <p class="pg-time-remaining" id="verifier-time-remaining" aria-live="polite"></p>
+                    <div class="pg-copy-all-row">
+                        <button type="button" id="copy-all-btn" class="demo-btn-secondary"
+                                aria-label="Copy all credentials as shell environment variables">
+                            Copy all (shell env vars)
+                        </button>
+                        <span id="copy-all-status" class="pg-copy-all-status" aria-hidden="true"></span>
+                    </div>
+                    <div id="credentials-container">
+                        <div class="demo-credential" data-cred-field="publicKey">
+                            <span class="demo-credential__label">Public key</span>
+                            <span class="demo-credential__value" id="cred-public-key"></span>
+                            <button type="button" class="demo-copy-btn btn-copy" data-copy-target="cred-public-key"
+                                    aria-label="Copy public key to clipboard">Copy</button>
+                        </div>
+                        <div class="demo-credential" data-cred-field="clientId">
+                            <span class="demo-credential__label">Client ID</span>
+                            <span class="demo-credential__value" id="cred-client-id"></span>
+                            <button type="button" class="demo-copy-btn btn-copy" data-copy-target="cred-client-id"
+                                    aria-label="Copy client ID to clipboard">Copy</button>
+                        </div>
+                        <div class="demo-credential" data-cred-field="hmacSecret">
+                            <span class="demo-credential__label">HMAC secret</span>
+                            <span class="demo-credential__value" id="cred-hmac-secret"></span>
+                            <button type="button" class="demo-copy-btn btn-copy" data-copy-target="cred-hmac-secret"
+                                    aria-label="Copy HMAC secret to clipboard">Copy</button>
+                        </div>
+                        <div class="demo-credential" data-cred-field="apiKey">
+                            <span class="demo-credential__label">API key</span>
+                            <span class="demo-credential__value" id="cred-api-key"></span>
+                            <button type="button" class="demo-copy-btn btn-copy" data-copy-target="cred-api-key"
+                                    aria-label="Copy API key to clipboard">Copy</button>
+                        </div>
+                        <div class="demo-credential" data-cred-field="expiresAt">
+                            <span class="demo-credential__label">Expires</span>
+                            <span class="demo-credential__value" id="cred-expires"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pg-wallet-callout">
+                    <p>Want to test the full app-to-app flow? Switch a wallet into sandbox mode in 6 taps.</p>
+                    <a class="demo-btn-secondary" href="https://docs.provii.app/getting-started/wallet-setup" target="_blank" rel="noopener">Wallet sandbox walkthrough</a>
+                </div>
+
+                <div style="text-align:center;">
+                    <button type="button" id="reset-btn" class="demo-btn-secondary">
+                        Mint another policy
+                    </button>
+                </div>
+            </section>
+        </section>
+
+        <!-- ========================================================== -->
+        <!-- Role panel: Issuer                                          -->
+        <!-- ========================================================== -->
+        <section role="tabpanel" id="role-panel-issuer" aria-labelledby="role-tab-issuer" hidden>
+
+            <section id="section-issuer-form" aria-labelledby="issuer-form-heading">
+                <div class="pg-form-card demo-card">
+                    <h2 id="issuer-form-heading">Configure issuer</h2>
+
+                    <div id="issuer-form-alert" class="form-alert" role="alert"></div>
+
+                    <div class="pg-field-group">
+                        <label class="demo-label" for="issuer-label-input">Issuer label</label>
+                        <input type="text" id="issuer-label-input" class="demo-input"
+                               minlength="1" maxlength="64"
+                               pattern="[\x20-\x7E]+"
+                               placeholder="e.g. Acme Bank Sandbox"
+                               aria-describedby="issuer-label-error issuer-label-hint">
+                        <div id="issuer-label-hint" class="pg-rate-note" style="text-align:left;">
+                            ASCII only. 1 to 64 characters. Shows in wallet attestation prompts.
+                        </div>
+                        <div id="issuer-label-error" class="field-error"></div>
+                    </div>
+
+                    <div style="text-align:center;">
+                        <button type="button" id="issuer-create-btn" class="demo-btn-primary" style="width:100%; max-width:360px;">
+                            Mint issuer credentials
+                        </button>
+                        <p class="pg-rate-note">Limited to 5 mints per hour. Credentials last 72 hours.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-issuer-results" class="section-hidden" aria-labelledby="issuer-cred-heading">
+
+                <div id="issuer-expiry-warning" class="pg-expiry-warning" hidden>
+                    <span><strong>This credential expires soon.</strong> <span id="issuer-expiry-relative"></span></span>
+                    <button type="button" id="issuer-remint-btn" class="demo-btn-secondary">Mint new</button>
+                </div>
+
+                <div class="pg-section-card demo-card">
+                    <h2 id="issuer-cred-heading" tabindex="-1">Your issuer credentials</h2>
+                    <p>Persisted to localStorage so reload keeps them.</p>
+                    <p class="pg-time-remaining" id="issuer-time-remaining" aria-live="polite"></p>
+                    <div class="pg-copy-all-row">
+                        <button type="button" id="issuer-copy-all-btn" class="demo-btn-secondary"
+                                aria-label="Copy all issuer credentials as shell environment variables">
+                            Copy all (shell env vars)
+                        </button>
+                        <span id="issuer-copy-all-status" class="pg-copy-all-status" aria-hidden="true"></span>
+                    </div>
+                    <div id="issuer-credentials-container">
+                        <div class="demo-credential">
+                            <span class="demo-credential__label">Client ID</span>
+                            <span class="demo-credential__value" id="issuer-cred-client-id"></span>
+                            <button type="button" class="demo-copy-btn btn-copy" data-copy-target="issuer-cred-client-id"
+                                    aria-label="Copy issuer client ID to clipboard">Copy</button>
+                        </div>
+                        <div class="demo-credential">
+                            <span class="demo-credential__label">HMAC secret</span>
+                            <span class="demo-credential__value" id="issuer-cred-hmac-secret"></span>
+                            <button type="button" class="demo-copy-btn btn-copy" data-copy-target="issuer-cred-hmac-secret"
+                                    aria-label="Copy issuer HMAC secret to clipboard">Copy</button>
+                        </div>
+                        <div class="demo-credential">
+                            <span class="demo-credential__label">Key ID (kid)</span>
+                            <span class="demo-credential__value" id="issuer-cred-kid"></span>
+                            <button type="button" class="demo-copy-btn btn-copy" data-copy-target="issuer-cred-kid"
+                                    aria-label="Copy issuer kid to clipboard">Copy</button>
+                        </div>
+                        <div class="demo-credential">
+                            <span class="demo-credential__label">Base URL</span>
+                            <span class="demo-credential__value" id="issuer-cred-base-url"></span>
+                            <button type="button" class="demo-copy-btn btn-copy" data-copy-target="issuer-cred-base-url"
+                                    aria-label="Copy issuer base URL to clipboard">Copy</button>
+                        </div>
+                        <div class="demo-credential">
+                            <span class="demo-credential__label">Expires</span>
+                            <span class="demo-credential__value" id="issuer-cred-expires"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pg-section-card demo-card">
+                    <h2>Integration snippets</h2>
+                    <p>Authenticate to <code>/v1/attestation/create</code> with your client_id + HMAC secret. The Issuer signs the Ed25519 attestation server-side and returns it.</p>
+
+                    <div class="demo-tabs" role="tablist" aria-label="Issuer language">
+                        <button role="tab" class="demo-tab demo-tab--active issuer-code-tab" data-lang="nodejs"
+                                id="issuer-tab-nodejs" aria-selected="true" aria-controls="issuer-panel-nodejs"
+                                tabindex="0">Node.js</button>
+                        <button role="tab" class="demo-tab issuer-code-tab" data-lang="go"
+                                id="issuer-tab-go" aria-selected="false" aria-controls="issuer-panel-go"
+                                tabindex="-1">Go</button>
+                        <button role="tab" class="demo-tab issuer-code-tab" data-lang="python"
+                                id="issuer-tab-python" aria-selected="false" aria-controls="issuer-panel-python"
+                                tabindex="-1">Python</button>
+                        <button role="tab" class="demo-tab issuer-code-tab" data-lang="curl"
+                                id="issuer-tab-curl" aria-selected="false" aria-controls="issuer-panel-curl"
+                                tabindex="-1">cURL</button>
+                    </div>
+                    <div role="tabpanel" class="pg-code-panel issuer-code-panel" id="issuer-panel-nodejs"
+                         aria-labelledby="issuer-tab-nodejs" aria-hidden="false">
+                        <pre><code id="issuer-code-nodejs"></code></pre>
+                        <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                data-copy-target="issuer-code-nodejs"
+                                aria-label="Copy issuer Node.js snippet to clipboard">Copy</button>
+                    </div>
+                    <div role="tabpanel" class="pg-code-panel issuer-code-panel" id="issuer-panel-go"
+                         aria-labelledby="issuer-tab-go" aria-hidden="true">
+                        <pre><code id="issuer-code-go"></code></pre>
+                        <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                data-copy-target="issuer-code-go"
+                                aria-label="Copy issuer Go snippet to clipboard">Copy</button>
+                    </div>
+                    <div role="tabpanel" class="pg-code-panel issuer-code-panel" id="issuer-panel-python"
+                         aria-labelledby="issuer-tab-python" aria-hidden="true">
+                        <pre><code id="issuer-code-python"></code></pre>
+                        <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                data-copy-target="issuer-code-python"
+                                aria-label="Copy issuer Python snippet to clipboard">Copy</button>
+                    </div>
+                    <div role="tabpanel" class="pg-code-panel issuer-code-panel" id="issuer-panel-curl"
+                         aria-labelledby="issuer-tab-curl" aria-hidden="true">
+                        <pre><code id="issuer-code-curl"></code></pre>
+                        <button type="button" class="demo-copy-btn pg-code-copy-btn btn-copy"
+                                data-copy-target="issuer-code-curl"
+                                aria-label="Copy issuer cURL snippet to clipboard">Copy</button>
+                    </div>
+                </div>
+
+                <div class="pg-wallet-callout">
+                    <p>Test against the wallet. Put a phone into sandbox mode (6 taps on the version number) and it will accept attestations signed by this issuer.</p>
+                    <a class="demo-btn-secondary" href="https://docs.provii.app/getting-started/wallet-setup" target="_blank" rel="noopener">Wallet sandbox walkthrough</a>
+                </div>
+
+                <div style="text-align:center;">
+                    <button type="button" id="issuer-reset-btn" class="demo-btn-secondary">
+                        Mint another issuer
+                    </button>
+                </div>
+            </section>
+        </section>
+
+        <div class="pg-help">
+            <a href="https://docs.provii.app" target="_blank" rel="noopener">Read the docs <span class="sr-only">(opens in new tab)</span></a>
+        </div>
+    </main>
+
+    <footer class="demo-footer" role="contentinfo">
+      <div class="demo-footer__brand">
+        <span class="demo-gradient-text">Provii Wallet</span>
+      </div>
+      <p>Sandbox environment. No personal information is collected.</p>
+      <div class="demo-footer__links">
+        <a href="https://provii.app">provii.app</a>
+        <a href="https://docs.provii.app">Documentation</a>
+      </div>
+    </footer>
+
+    <script src="/playground.js"></script>
+
+    <script>
+    (function() {
+      var toggleOptions = document.querySelectorAll('.demo-toggle__option');
+      toggleOptions.forEach(function(opt) {
+        opt.addEventListener('click', function() {
+          // Only toggle siblings within the same .demo-toggle group, otherwise
+          // every click on a labelled checkbox would deselect direction radios.
+          var group = opt.closest('.demo-toggle');
+          if (!group) return;
+          group.querySelectorAll('.demo-toggle__option').forEach(function(o) {
+            o.classList.remove('demo-toggle__option--active');
+          });
+          opt.classList.add('demo-toggle__option--active');
+          var radio = opt.querySelector('input[type="radio"]');
+          if (radio) radio.checked = true;
+        });
+      });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,539 @@
+# Provii Demos Security Scanning Pipeline
+# Comprehensive security analysis for multi-platform demo applications
+#
+# Security checks performed:
+# - Semgrep: Static analysis for security vulnerabilities
+# - Gitleaks: Secret detection in code and history
+# - npm audit: Node.js dependency vulnerability scanning
+# - pip-audit: Python dependency vulnerability scanning
+# - govulncheck: Go dependency vulnerability scanning
+# - trivy: Container and filesystem vulnerability scanning
+# - Zizmor: GitHub Actions workflow security analysis
+# - Dependency Review: License and vulnerability checks for PRs
+#
+# Note: Some SARIF uploads require GitHub Advanced Security (GHAS).
+# For repos without GHAS, those steps will be skipped gracefully.
+
+name: Security
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.github/dependabot.yml'
+      - '.github/CODEOWNERS'
+      - '.gitignore'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.github/dependabot.yml'
+      - '.github/CODEOWNERS'
+      - '.gitignore'
+  schedule:
+    # Run weekly on Monday at 2:00 AM UTC
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================================
+  # Semgrep - Static Application Security Testing (SAST)
+  # ============================================================================
+  semgrep:
+    name: Semgrep SAST
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      HAS_SEMGREP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN != '' }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Semgrep
+        run: pip install --no-cache-dir semgrep==1.139.0
+
+      - name: Run Semgrep (blocking, registry rulesets)
+        if: ${{ env.HAS_SEMGREP_TOKEN == 'true' }}
+        run: |
+          semgrep scan \
+            --config p/default \
+            --config p/security-audit \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --config .semgrep/ \
+            --error --severity ERROR \
+            .
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - name: Run Semgrep (blocking, local rules only)
+        if: ${{ env.HAS_SEMGREP_TOKEN != 'true' }}
+        run: |
+          semgrep scan \
+            --config .semgrep/ \
+            --error --severity ERROR \
+            .
+
+      - name: Run Semgrep (SARIF)
+        if: ${{ always() && env.HAS_SEMGREP_TOKEN == 'true' }}
+        run: |
+          semgrep scan \
+            --config p/default \
+            --config p/security-audit \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --config .semgrep/ \
+            --sarif --output semgrep.sarif \
+            . || true
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
+        if: ${{ always() && env.HAS_SEMGREP_TOKEN == 'true' }}
+        with:
+          sarif_file: semgrep.sarif
+
+  # ============================================================================
+  # Gitleaks - Secret Detection
+  # ============================================================================
+  gitleaks:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE_KEY }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: '8.21.2'
+        run: |
+          set -euo pipefail
+          curl -sSLo /tmp/gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tar -C /tmp -xzf /tmp/gitleaks.tar.gz gitleaks
+          sudo install /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Run gitleaks
+        run: gitleaks detect --source . --redact --no-banner --exit-code 1
+
+  # ============================================================================
+  # Trivy - Filesystem Vulnerability Scanning
+  # ============================================================================
+  trivy:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'fs'
+          scanners: 'vuln'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '1'
+          limit-severities-for-sarif: "true"
+
+      - name: Upload Trivy SARIF results
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ============================================================================
+  # Node.js Dependency Audit
+  # ============================================================================
+  npm-audit:
+    name: npm Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backends/issuer/nodejs
+          - backends/verifier/nodejs
+          - backends/issuer/cloudflare-workers
+          - backends/verifier/cloudflare-workers
+          - demo-web-provii-agegate
+          - apps/react-native/issuer
+          - apps/react-native/verifier
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '20'
+
+      - name: Check if package-lock.json exists
+        id: check-lock
+        working-directory: ${{ matrix.project }}
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies
+        if: steps.check-lock.outputs.exists == 'true'
+        working-directory: ${{ matrix.project }}
+        run: npm ci
+
+      - name: Run npm audit
+        if: steps.check-lock.outputs.exists == 'true'
+        working-directory: ${{ matrix.project }}
+        # `--omit=dev` so devDeps (vitest, esbuild, etc.) don't gate the
+        # build on advisories that never reach the deployed worker. The
+        # production-deps audit still trips for any real shipping
+        # vulnerability, and Dependabot tracks dev advisories separately.
+        run: |
+          npm audit --audit-level=high --omit=dev --json > audit-result.json || true
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit-result.json)
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit-result.json)
+          echo "Critical: ${CRITICAL}, High: ${HIGH}"
+          if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+            echo "::error::npm audit found ${CRITICAL} critical and ${HIGH} high vulnerabilities"
+            exit 1
+          fi
+
+  # ============================================================================
+  # Python Dependency Audit
+  # ============================================================================
+  pip-audit:
+    name: pip Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backends/issuer/python
+          - backends/verifier/python
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.12'
+
+      - name: Upgrade pip and install pip-audit
+        run: pip install --upgrade pip setuptools wheel pip-audit
+
+      - name: Install project dependencies
+        working-directory: ${{ matrix.project }}
+        run: pip install -r requirements.txt
+
+      - name: Run pip-audit
+        working-directory: ${{ matrix.project }}
+        run: pip-audit --strict --vulnerability-service osv -r requirements.txt
+
+  # ============================================================================
+  # Go Dependency Vulnerability Check
+  # ============================================================================
+  govulncheck:
+    name: Go Vulnerability Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backends/issuer/go
+          - backends/verifier/go
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          # Pin to a patched toolchain. go1.25.10 carries GO-2026-5037
+          # (crypto/x509) and GO-2026-5039 (net/textproto), both fixed in
+          # go1.25.11; the floating '1.25' selector still resolves to 1.25.10
+          # until the setup-go version manifest catches up, so pin the exact
+          # fixed patch (setup-go downloads it from go.dev/dl). Bumping the
+          # toolchain is the real fix, not silencing the check.
+          go-version: '1.25.11'
+          cache-dependency-path: ${{ matrix.project }}/go.sum
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        working-directory: ${{ matrix.project }}
+        run: govulncheck ./...
+
+  # ============================================================================
+  # CodeQL Analysis - JavaScript/TypeScript, Python, Go
+  # Note: Swift requires macOS (separate job), Kotlin Android autobuild is unreliable
+  # ============================================================================
+  zizmor:
+    name: Zizmor Workflow Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Run Zizmor
+        uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
+        with:
+          version: latest
+          inputs: .github/workflows/
+          advanced-security: false
+          # Gate on high+ so genuine `error[*]` rules still block, and
+          # medium warnings (excessive-permissions, dependabot-cooldown,
+          # secrets-outside-env) are treated as advisory. Without this
+          # the security.yml job dependency between secrets-events:write
+          # and contents:write trips excessive-permissions on every PR.
+          min-severity: high
+
+  # ============================================================================
+  # Dependency Review - License and Vulnerability Checks for PRs
+  # ============================================================================
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0, AGPL-3.0
+
+  # ============================================================================
+  # License Compliance - Node.js projects
+  # ============================================================================
+  license-compliance:
+    name: License Compliance
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backends/issuer/nodejs
+          - backends/verifier/nodejs
+          - backends/issuer/cloudflare-workers
+          - backends/verifier/cloudflare-workers
+          - demo-web-provii-agegate
+          - apps/react-native/issuer
+          - apps/react-native/verifier
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '20'
+
+      - name: Check if package-lock.json exists
+        id: check-lock
+        working-directory: ${{ matrix.project }}
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies (with lock file)
+        if: steps.check-lock.outputs.exists == 'true'
+        working-directory: ${{ matrix.project }}
+        run: npm ci
+
+      - name: Install dependencies (without lock file)
+        if: steps.check-lock.outputs.exists == 'false'
+        working-directory: ${{ matrix.project }}
+        run: npm install
+
+      - name: Check licenses
+        working-directory: ${{ matrix.project }}
+        run: |
+          npx license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0;SSPL-1.0;EUPL-1.1;EUPL-1.2" --summary
+
+  # ============================================================================
+  # Security Summary
+  # ============================================================================
+  security-success:
+    name: Security Success
+    runs-on: ubuntu-latest
+    needs:
+      - semgrep
+      - gitleaks
+      - trivy
+      - npm-audit
+      - pip-audit
+      - govulncheck
+      - zizmor
+      - dependency-review
+      - license-compliance
+    if: always()
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - name: Check all security jobs
+        env:
+          SEMGREP_RESULT: ${{ needs.semgrep.result }}
+          GITLEAKS_RESULT: ${{ needs.gitleaks.result }}
+          TRIVY_RESULT: ${{ needs.trivy.result }}
+          NPM_AUDIT_RESULT: ${{ needs.npm-audit.result }}
+          PIP_AUDIT_RESULT: ${{ needs.pip-audit.result }}
+          GOVULNCHECK_RESULT: ${{ needs.govulncheck.result }}
+          ZIZMOR_RESULT: ${{ needs.zizmor.result }}
+          DEPENDENCY_REVIEW_RESULT: ${{ needs.dependency-review.result }}
+          LICENSE_COMPLIANCE_RESULT: ${{ needs.license-compliance.result }}
+        run: |
+          FAILED=0
+
+          if [[ "$SEMGREP_RESULT" == "failure" ]]; then
+            echo "::error::Semgrep SAST found security issues"
+            FAILED=1
+          fi
+
+          # Gitleaks skips cleanly when licence key is absent
+          if [[ "$GITLEAKS_RESULT" == "failure" ]]; then
+            echo "::error::Gitleaks found secrets in code"
+            FAILED=1
+          fi
+
+          if [[ "$TRIVY_RESULT" == "failure" ]]; then
+            echo "::error::Trivy found critical/high vulnerabilities"
+            FAILED=1
+          fi
+
+          if [[ "$NPM_AUDIT_RESULT" == "failure" ]]; then
+            echo "::error::npm audit found critical/high vulnerabilities"
+            FAILED=1
+          fi
+
+          if [[ "$PIP_AUDIT_RESULT" == "failure" ]]; then
+            echo "::error::pip-audit found vulnerabilities"
+            FAILED=1
+          fi
+
+          if [[ "$GOVULNCHECK_RESULT" == "failure" ]]; then
+            echo "::error::govulncheck found Go vulnerabilities"
+            FAILED=1
+          fi
+
+          if [[ "$ZIZMOR_RESULT" == "failure" ]]; then
+            echo "::error::Zizmor found workflow security issues"
+            FAILED=1
+          fi
+
+          if [[ "$DEPENDENCY_REVIEW_RESULT" == "failure" ]]; then
+            echo "::error::Dependency Review found issues with new dependencies"
+            FAILED=1
+          fi
+
+          if [[ "$LICENSE_COMPLIANCE_RESULT" == "failure" ]]; then
+            echo "::error::License compliance check failed"
+            FAILED=1
+          fi
+
+
+          if [[ "$FAILED" -eq 1 ]]; then
+            exit 1
+          fi
+
+          echo "All security checks passed"

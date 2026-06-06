@@ -1,0 +1,82 @@
+#######################################################################
+# Provii Verifier Demo Backend - Cloudflare Workers                   #
+# Demo backend for third-party verifiers integrating with Provii      #
+#######################################################################
+
+name = "verifier-demo"
+main = "src/index.ts"
+compatibility_date = "2025-11-17"
+compatibility_flags = ["nodejs_compat"]
+
+# Custom domain routing
+routes = [
+  { pattern = "verifier-demo.provii.app", custom_domain = true }
+]
+
+# KV Namespace for session storage
+kv_namespaces = [
+  { binding = "SESSIONS", id = "1951acbdb1bc4d68afc2315295988154" }
+]
+
+# Environment variables
+# Note: VERIFIER_API_URL is not set here as a plain-text var. For production,
+# set it via `wrangler secret put VERIFIER_API_URL` or bind it from the
+# Secrets Store. If unset, the worker fetches sandbox credentials (including
+# the URL) from playground.provii.app on startup.
+[vars]
+ENVIRONMENT = "production"
+ALLOWED_ORIGINS = "https://verifier-demo.provii.app"
+
+# Secrets (set via wrangler secret put)
+# REQUIRED for production:
+# - CLIENT_ID: Your client ID from the Provii admin portal
+#   wrangler secret put CLIENT_ID
+#
+# - API_KEY: Your API key from the Provii admin portal
+#   wrangler secret put API_KEY
+#
+# - HMAC_SECRET: Your HMAC secret (base64url encoded)
+#   wrangler secret put HMAC_SECRET
+#
+# IMPORTANT: Never commit secrets to version control!
+# If secrets are not set, the worker will attempt to fetch sandbox credentials
+# from playground.provii.app on startup.
+
+# ── Secrets Store ────────────────────────────────────────────────────
+[[secrets_store_secrets]]
+binding = "DEMO_TOKEN_SECRET"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "DEMO_TOKEN_SECRET"
+
+# Observability Configuration
+[observability.logs]
+enabled = true
+
+#######################################################################
+# Sandbox Environment (--env sandbox)                                  #
+#######################################################################
+[env.sandbox]
+name = "verifier-demo-sandbox"
+
+routes = [
+  { pattern = "sandbox-verifier-demo.provii.app", custom_domain = true }
+]
+
+# KV Namespace for sandbox session storage
+[[env.sandbox.kv_namespaces]]
+binding = "SESSIONS"
+id = "1a5a7867c6b146caa0efc184d9e6bad7"
+
+[env.sandbox.vars]
+ENVIRONMENT = "sandbox"
+VERIFIER_API_URL = "https://sandbox-verify.provii.app"
+ALLOWED_ORIGINS = "https://sandbox-verifier-demo.provii.app,http://localhost:3000,http://localhost:5173"
+
+# ── Sandbox Secrets Store ────────────────────────────────────────────
+[[env.sandbox.secrets_store_secrets]]
+binding = "DEMO_TOKEN_SECRET"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "DEMO_TOKEN_SECRET"
+
+[env.sandbox.observability.logs]
+enabled = true

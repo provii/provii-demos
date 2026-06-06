@@ -1,0 +1,44 @@
+name: Feature Request
+description: Suggest a new feature or improvement for provii-demos
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+ - type: markdown
+ attributes:
+ value: |
+ We appreciate feature suggestions. Please describe the problem you are trying to solve and your proposed approach.
+
+ - type: textarea
+ id: problem
+ attributes:
+ label: Problem Description
+ description: What problem does this feature solve? What friction are you experiencing?
+ placeholder: Describe the problem or limitation.
+ validations:
+ required: true
+
+ - type: textarea
+ id: solution
+ attributes:
+ label: Proposed Solution
+ description: How would you like this to work?
+ placeholder: Describe your ideal solution.
+ validations:
+ required: true
+
+ - type: textarea
+ id: alternatives
+ attributes:
+ label: Alternatives Considered
+ description: Have you considered any workarounds or alternative approaches?
+ placeholder: Describe any alternatives you have thought about.
+ validations:
+ required: false
+
+ - type: textarea
+ id: context
+ attributes:
+ label: Additional Context
+ description: Any other information, screenshots, or references that would help.
+ validations:
+ required: false

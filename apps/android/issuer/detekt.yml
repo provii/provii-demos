@@ -1,0 +1,14 @@
+# Detekt configuration for Provii Issuer Demo (Jetpack Compose project)
+
+naming:
+  FunctionNaming:
+    # Jetpack Compose @Composable functions follow PascalCase by convention.
+    # See https://developer.android.com/develop/ui/compose/documentation#naming
+    ignoreAnnotated:
+      - 'Composable'
+
+style:
+  MagicNumber:
+    # Colour constants, layout dimensions, and similar declarations are initialised
+    # with literal values that are self-documenting when bound to a named property.
+    ignorePropertyDeclaration: true

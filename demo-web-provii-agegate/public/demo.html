@@ -1,0 +1,393 @@
+<!-- SPDX-License-Identifier: MIT -->
+<!-- Copyright (c) 2025 Provii -->
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Provii Age Verification - Demo</title>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="10" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0110 0v4"/>
+                </svg>
+            </div>
+            <h1>Age Verification</h1>
+            <p>Verify with Provii Wallet • 18+</p>
+        </div>
+
+        <div class="content">
+
+            <div id="gate" class="gate-container">
+                <!-- QR code or button will be rendered here -->
+                <div class="gate-loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <div id="msg" class="status-message status-loading">
+                <div class="spinner"></div>
+                <span>Initializing verification...</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Powered by <a href="https://provii.app" target="_blank" rel="noopener">Provii Wallet</a></p>
+            <p class="footer-subtitle">Privacy preserving age verification</p>
+            <div class="tech-info">
+                <span class="api-endpoint">API: zerokp.id/v1</span>
+                <span class="separator">•</span>
+                <span id="device-type">Desktop</span>
+                <span class="separator">•</span>
+                <span id="state-indicator">Initializing</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.provii.app/sdk/provii-agegate/v0.1.3/agegate.browser.js"
+            integrity="sha384-2YgklkdwmF3u5HNQBha6kV/fXphpO0quuQ2dR1jN+1SAolpkdGEFrql40VBv3Phq"
+            crossorigin="anonymous"></script>
+    <script>
+        // Global gate instance for proper cleanup
+        let gateInstance = null;
+        let stateSubscription = null;
+        let initTimeout = null;
+
+        // Device detection
+        function detectDevice() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isTablet = /iPad|Android(?!.*Mobile)/i.test(navigator.userAgent);
+            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            
+            return {
+                isMobile,
+                isTablet,
+                isTouchDevice,
+                type: isMobile ? 'Mobile' : (isTablet ? 'Tablet' : 'Desktop')
+            };
+        }
+
+        // Update device type display
+        const device = detectDevice();
+        document.getElementById('device-type').textContent = device.type;
+
+        /** Escape a string for safe insertion into HTML to prevent XSS. */
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Simple function to work with our proxy endpoints
+        let currentChallengeId = null;
+        let pollInterval = null;
+
+        async function createChallengeAndShowQR() {
+            try {
+                updateStatus('Creating verification challenge...', 'loading');
+
+                // Call our proxy endpoint
+                const response = await fetch('/v1/verify/create-challenge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ minimumAge: 18 })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create challenge');
+                }
+
+                const data = await response.json();
+                currentChallengeId = data.challenge_id;
+
+                // Generate QR code for the verify URL
+                const qrContainer = document.getElementById('gate');
+                qrContainer.innerHTML = '';
+
+                // Use qrcode library if available, otherwise show URL
+                if (typeof QRCode !== 'undefined') {
+                    new QRCode(qrContainer, {
+                        text: data.verify_url + '?cid=' + data.challenge_id,
+                        width: 160,
+                        height: 160
+                    });
+
+                    // Add short code display below QR code
+                    if (data.short_code) {
+                        const formattedShortCode = data.short_code.replace(/(\d{4})(\d{4})(\d{4})/, '$1 $2 $3');
+                        const shortCodeDiv = document.createElement('div');
+                        shortCodeDiv.style.cssText = 'margin-top:6px;text-align:center;';
+                        shortCodeDiv.innerHTML = `
+                            <p style="margin:0 0 3px;color:#64748b;font-size:11px;font-weight:500;">Or enter code:</p>
+                            <p style="margin:0;color:#667eea;font-size:18px;font-weight:700;font-family:monospace;letter-spacing:2px;">${escapeHtml(formattedShortCode)}</p>
+                        `;
+                        qrContainer.appendChild(shortCodeDiv);
+                    }
+                } else {
+                    qrContainer.innerHTML = `<div style="padding:20px;text-align:center;">
+                        <p>Scan with Provii Wallet:</p>
+                        <code style="word-break:break-all;">${escapeHtml(data.verify_url)}?cid=${escapeHtml(data.challenge_id)}</code>
+                    </div>`;
+                }
+
+                updateStatus('Scan with Provii Wallet to verify', 'info');
+
+                // Start polling
+                startPolling();
+
+            } catch (error) {
+                console.error('Error creating challenge:', error);
+                updateStatus('Failed to create challenge', 'error');
+                showRetryUI('Failed to initialize', initializeAgeGate);
+            }
+        }
+
+        function startPolling() {
+            let attempts = 0;
+            pollInterval = setInterval(async () => {
+                attempts++;
+                if (attempts > 150) {
+                    clearInterval(pollInterval);
+                    updateStatus('Verification timeout', 'error');
+                    showRetryUI('Verification timed out', initializeAgeGate);
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/v1/verify/poll', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ challengeId: currentChallengeId })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Poll failed');
+                    }
+
+                    const data = await response.json();
+
+                    if (data.verified || data.status === 'verified') {
+                        clearInterval(pollInterval);
+                        updateStatus('Verification successful!', 'success');
+                        setTimeout(() => {
+                            document.getElementById('age-gate-overlay').style.display = 'none';
+                            document.getElementById('main-content').style.display = 'block';
+                        }, 1500);
+                    }
+                } catch (error) {
+                    console.error('Poll error:', error);
+                }
+            }, 2000);
+        }
+
+        // Status message helper with improved UX
+        function updateStatus(message, type = 'loading') {
+            const msgEl = document.getElementById('msg');
+            if (!msgEl) return;
+
+            // Sanitise message to prevent XSS when interpolated into DOM
+            const safeMessage = escapeHtml(message);
+
+            msgEl.className = `status-message status-${type}`;
+
+            if (type === 'loading') {
+                msgEl.innerHTML = `<div class="spinner"></div><span>${safeMessage}</span>`;
+            } else if (type === 'error') {
+                msgEl.innerHTML = `
+                    <svg class="status-icon" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>${safeMessage}</span>
+                `;
+            } else if (type === 'success') {
+                msgEl.innerHTML = `
+                    <svg class="status-icon" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>${safeMessage}</span>
+                `;
+            } else if (type === 'info') {
+                msgEl.innerHTML = `
+                    <svg class="status-icon" viewBox="0 0 20 20" fill="currentColor" style="color: #3b82f6;">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>${safeMessage}</span>
+                `;
+            } else {
+                msgEl.innerHTML = `<span>${safeMessage}</span>`;
+            }
+        }
+
+        // Update state indicator
+        function updateStateIndicator(state) {
+            const indicator = document.getElementById('state-indicator');
+            if (indicator) {
+                indicator.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+            }
+        }
+
+        // Fix QR code sizing after render
+        function fixQRCodeSize() {
+            requestAnimationFrame(() => {
+                const canvas = document.querySelector('#gate canvas');
+                if (canvas) {
+                    // Remove loading state
+                    const loadingEl = document.querySelector('.gate-loading');
+                    if (loadingEl) {
+                        loadingEl.style.display = 'none';
+                    }
+                    
+                    // Ensure square aspect ratio
+                    const size = Math.min(canvas.width, canvas.height);
+                    canvas.style.width = `${size}px`;
+                    canvas.style.height = `${size}px`;
+                    canvas.style.maxWidth = '100%';
+                    canvas.style.height = 'auto';
+                    canvas.classList.add('qr-canvas');
+                    
+                    // Add fade-in animation
+                    canvas.style.animation = 'fadeIn 0.3s ease-in';
+                }
+            });
+        }
+
+        // Cleanup function
+        function cleanupGate() {
+            console.log('Cleaning up AgeGate instance...');
+            
+            // Clear init timeout
+            if (initTimeout) {
+                clearTimeout(initTimeout);
+                initTimeout = null;
+            }
+            
+            // Unsubscribe from state changes
+            if (stateSubscription) {
+                try {
+                    stateSubscription();
+                    stateSubscription = null;
+                } catch (err) {
+                    console.error('Error unsubscribing:', err);
+                }
+            }
+            
+            // Stop gate instance (using stop() not dispose())
+            if (gateInstance && typeof gateInstance.stop === 'function') {
+                try {
+                    gateInstance.stop();
+                } catch (err) {
+                    console.error('Error stopping gate:', err);
+                }
+            }
+            
+            gateInstance = null;
+        }
+
+        // Show manual retry UI for timeout/failure
+        function showRetryUI(message, retryCallback) {
+            const safeMessage = escapeHtml(message);
+            const gateEl = document.getElementById('gate');
+            if (gateEl) {
+                gateEl.innerHTML = `
+                    <div style="text-align:center;padding:20px;">
+                        <svg style="width:48px;height:48px;color:#f59e0b;margin:0 auto 16px;" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                        </svg>
+                        <p style="margin:0 0 20px;color:#374151;font-size:16px;">${safeMessage}</p>
+                        <button id="retry-btn" style="
+                            background:#007AFF;border:none;color:#fff;padding:12px 24px;
+                            border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;">
+                            Try Again
+                        </button>
+                    </div>`;
+                
+                const retryBtn = document.getElementById('retry-btn');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', retryCallback);
+                }
+            }
+        }
+
+        // Initialize AgeGate
+        function initializeAgeGate() {
+            // Clean up any existing instance
+            cleanupGate();
+
+            try {
+                // For sandbox demo, we'll use a simpler approach
+                // Create challenge directly and handle the flow manually
+                createChallengeAndShowQR();
+
+            } catch (err) {
+                console.error('Failed to create AgeGate instance:', err);
+                updateStatus('Failed to create verification instance', 'error');
+                
+                setTimeout(() => {
+                    showRetryUI('Failed to initialize. Please try again.', () => initializeAgeGate());
+                }, 1000);
+            }
+        }
+
+        // Setup cleanup handlers
+        window.addEventListener('beforeunload', cleanupGate);
+        window.addEventListener('pagehide', cleanupGate);
+        
+        // Handle page visibility changes
+        let wasHidden = false;
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('Page hidden, polling may be throttled');
+                wasHidden = true;
+            } else {
+                console.log('Page visible, polling resumed');
+                if (wasHidden) {
+                    wasHidden = false;
+                    fixQRCodeSize();
+                }
+            }
+        });
+
+        // Handle resize events
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(fixQRCodeSize, 250);
+        });
+
+        // Prevent zoom on double-tap for mobile
+        if (device.isTouchDevice) {
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', (e) => {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+        }
+
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeAgeGate);
+        } else {
+            initializeAgeGate();
+        }
+
+        // Debug helpers
+        window.ageGateDebug = {
+            getInstance: () => gateInstance,
+            getState: () => gateInstance?.getState(),
+            getContext: () => gateInstance?.getContext(),
+            retry: () => gateInstance?.retry(),
+            stop: () => cleanupGate(),
+            reinit: () => initializeAgeGate()
+        };
+    </script>
+</body>
+</html>

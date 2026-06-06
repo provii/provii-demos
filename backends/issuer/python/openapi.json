@@ -1,0 +1,279 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Provii Issuer Backend API",
+    "description": "Third-party issuer backend API for creating signed attestations. This is the API contract that issuers implement to integrate with Provii.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Health check endpoint.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "summary": "Get Config",
+        "description": "Get configuration info (for debugging).",
+        "operationId": "get_config_api_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/create-attestation": {
+      "post": {
+        "summary": "Create Attestation",
+        "description": "Create attestation and return deep link.\n\nThe deep link can be opened by the Provii Wallet app to receive\nthe age credential via blind attestation.",
+        "operationId": "create_attestation_api_create_attestation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAttestationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/create-attestation-from-dob": {
+      "post": {
+        "summary": "Create Attestation From Dob",
+        "description": "Create attestation with date of birth (helper endpoint).\n\nThe deep link can be opened by the Provii Wallet app to receive\nthe age credential via blind attestation.",
+        "operationId": "create_attestation_from_dob_api_create_attestation_from_dob_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAttestationFromDobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AttestationObject": {
+        "properties": {
+          "dob_days": {
+            "type": "integer",
+            "title": "Dob Days"
+          },
+          "issuer_id": {
+            "type": "string",
+            "title": "Issuer Id"
+          },
+          "timestamp": {
+            "type": "integer",
+            "title": "Timestamp"
+          },
+          "nonce": {
+            "type": "string",
+            "title": "Nonce"
+          },
+          "signature": {
+            "type": "string",
+            "title": "Signature"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dob_days",
+          "issuer_id",
+          "timestamp",
+          "nonce",
+          "signature"
+        ],
+        "title": "AttestationObject"
+      },
+      "AttestationResponse": {
+        "properties": {
+          "deep_link": {
+            "type": "string",
+            "title": "Deep Link"
+          },
+          "attestation": {
+            "$ref": "#/components/schemas/AttestationObject"
+          },
+          "dob_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dob Days"
+          },
+          "expires_at": {
+            "type": "integer",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deep_link",
+          "attestation",
+          "expires_at"
+        ],
+        "title": "AttestationResponse"
+      },
+      "CreateAttestationFromDobRequest": {
+        "properties": {
+          "dob": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Dob",
+            "description": "Date of birth in YYYY-MM-DD format"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dob"
+        ],
+        "title": "CreateAttestationFromDobRequest"
+      },
+      "CreateAttestationRequest": {
+        "properties": {
+          "dob_days": {
+            "type": "integer",
+            "maximum": 36500.0,
+            "minimum": 1.0,
+            "title": "Dob Days",
+            "description": "Date of birth as days since Unix epoch"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dob_days"
+        ],
+        "title": "CreateAttestationRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development"
+    },
+    {
+      "url": "https://your-issuer-backend.com",
+      "description": "Production (replace with your URL)"
+    }
+  ]
+}

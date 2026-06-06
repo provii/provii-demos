@@ -1,0 +1,43 @@
+# Zizmor workflow-security analyser config.
+# https://docs.zizmor.sh/configuration/
+#
+# Audit-level suppressions for provii-demos. Each block must explain WHY
+# the rule does not apply; reviewers cannot tell suppressions from
+# oversights without context.
+
+rules:
+  dangerous-triggers:
+    ignore:
+      # CLA Assistant Lite needs `issue_comment` to react to the
+      # contributor reply containing the literal CLA acceptance string.
+      # Removing the trigger would break onboarding for every external
+      # contributor. The bot only mutates a CLA-signatures.json file in
+      # this repo and does not run privileged steps, so the
+      # privilege-escalation surface this rule warns about does not
+      # apply.
+      - cla.yml
+
+  cache-poisoning:
+    ignore:
+      # The sandbox deploy uses cached npm modules to keep cold-start
+      # under one minute. Cache scope is keyed off package-lock.json
+      # via setup-node + actions/cache, so a poisoned key would be
+      # detected by the next `npm ci` integrity check. No untrusted PR
+      # input ever reaches this workflow because it runs only on
+      # `push: branches: [main]` (no `pull_request_target`), making the
+      # supply-chain vector that the rule flags impossible to reach.
+      - deploy-sandbox.yml
+
+  unpinned-uses:
+    ignore:
+      # SLSA's reusable workflow generator MUST be referenced by tag
+      # (not SHA) per the SLSA spec. The generator validates its own
+      # ref at runtime and refuses to run from a SHA pin, so pinning
+      # would break provenance generation entirely.
+      - release.yml
+
+  archived-uses:
+    ignore:
+      # contributor-assistant/github-action is archived but still
+      # functional and SHA-pinned. No maintained alternative exists.
+      - cla.yml

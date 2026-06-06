@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Query schemes to check if Provii Wallet is installed -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>provii</string>
+    </array>
+
+    <!-- Optional: Configure backend URL (defaults to demo server) -->
+    <!--
+    <key>VERIFIER_BACKEND_URL</key>
+    <string>https://your-backend.com</string>
+    -->
+
+    <!-- LOCAL DEVELOPMENT ONLY -->
+    <!-- Remove this section for production builds -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>localhost</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+</dict>
+</plist>

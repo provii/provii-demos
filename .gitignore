@@ -1,0 +1,75 @@
+# Dependencies
+node_modules/
+.npm
+
+# Build outputs
+dist/
+build/
+*.js.map
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+backends/issuer/go/provii-issuer-demo
+backends/verifier/go/provii-verifier-demo
+
+# Gradle
+.gradle/
+local.properties
+*.iml
+
+# iOS
+*.xcuserstate
+xcuserdata/
+DerivedData/
+Pods/
+
+# Flutter
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+.coverage
+.nyc_output/
+provii-verifier-demo
+
+# Android keystores (never commit signing material)
+*.keystore
+# macOS AFP/SMB interrupted-copy temp files
+._*
+# Go coverage artefacts
+coverage.out

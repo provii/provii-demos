@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Demo Bank</string>
+
+    <!-- Issuer Main Screen -->
+    <string name="issuer_title">Issue Age Credential</string>
+    <string name="issuer_subtitle">Tap an age to issue a demo credential to Provii Wallet</string>
+    <string name="issuer_opening_wallet">Opening Provii Wallet</string>
+    <string name="issuer_complete_in_wallet">Complete the credential issuance in Provii Wallet</string>
+    <string name="issuer_issue_another">Issue Another</string>
+    <string name="issuer_under_18_info">This credential can be used for under-age verification (e.g., COPPA compliance, child safety features).</string>
+    <string name="issuer_wallet_open_failed">Failed to open Provii Wallet: %1$s</string>
+    <string name="issuer_success_icon_desc">Success</string>
+    <string name="issuer_refresh_icon_desc">Refresh</string>
+
+    <!-- Sandbox Instructions Screen -->
+    <string name="sandbox_title">Before You Begin</string>
+    <string name="sandbox_info_icon_desc">Information</string>
+    <string name="sandbox_setup_prompt">Please ensure Provii Wallet is set up before testing:</string>
+    <string name="sandbox_step_install">Install Provii Wallet</string>
+    <string name="sandbox_step_launch">Launch the app at least once</string>
+    <string name="sandbox_step_language">Complete the language selection</string>
+    <string name="sandbox_step_accessibility">Set your accessibility preferences</string>
+    <string name="sandbox_note">The wallet will automatically switch to the correct environment when you issue a credential.</string>
+    <string name="sandbox_acknowledge">I\'m ready to test</string>
+
+    <!-- Common -->
+    <string name="demo_footer">Demo App \u2022 Not for production use</string>
+</resources>

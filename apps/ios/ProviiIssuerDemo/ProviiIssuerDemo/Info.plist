@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    Info.plist for Provii Issuer Demo App
+
+    ATS Exception Note:
+    The NSExceptionAllowsInsecureHTTPLoads exception for localhost is included
+    solely for LOCAL DEVELOPMENT purposes. This allows the app to connect to
+    a local development server running on the developer's machine.
+
+    For production builds:
+    - Remove the entire NSAppTransportSecurity section, OR
+    - Use a proper HTTPS endpoint with valid certificates
+
+    The BACKEND_URL defaults to https:// and should be configured to point
+    to a production HTTPS endpoint when deploying.
+-->
+<plist version="1.0">
+<dict>
+	<!-- Query schemes to check if Provii Wallet is installed -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>provii</string>
+	</array>
+	<!-- To use a local backend, add: <key>BACKEND_URL</key><string>http://localhost:3000</string> -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<!--
+				    LOCAL DEVELOPMENT ONLY: This exception allows HTTP connections
+				    to localhost for testing with a local backend server.
+				    Remove or disable this for production deployments.
+				-->
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

@@ -1,0 +1,22 @@
+{
+  "name": "demo-cloudflare-worker",
+  "version": "1.0.0",
+  "description": "Reference Cloudflare Worker demonstrating HTMLRewriter-based provii-agegate injection",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260205.0",
+    "esbuild": "^0.27.2",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.62.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}

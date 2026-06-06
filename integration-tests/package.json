@@ -1,0 +1,33 @@
+{
+  "name": "provii-integration-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Integration tests for Provii verification flows",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run integration/e2e_verification_flow.test.ts",
+    "test:auth": "vitest run integration/authentication_consistency.test.ts",
+    "test:crypto": "vitest run integration/crypto_consistency.test.ts",
+    "test:session": "vitest run integration/session_management.test.ts",
+    "test:credit": "vitest run integration/credit_management.test.ts",
+    "test:coverage": "vitest run --coverage",
+    "test:sandbox": "VERIFIER_PORTAL_URL=https://sandbox-verify.provii.app HOSTED_BACKEND_URL=https://sandbox-verify.provii.app ISSUER_API_URL=https://sandbox-issuer.provii.app CREDIT_MANAGEMENT_URL=https://sandbox-credit.provii.app vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "provii",
+    "integration-tests",
+    "e2e-tests",
+    "verification"
+  ],
+  "author": "Tom Maelstrom <tom@maelstrom.au>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^4.1.8",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.8"
+  }
+}

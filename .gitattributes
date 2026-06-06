@@ -1,0 +1,18 @@
+# Auto-detect text files and normalise line endings
+* text=auto
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+
+# Lock files , generated, do not diff
+package-lock.json linguist-generated
+pubspec.lock linguist-generated
+go.sum linguist-generated
+
+# Linguist overrides
+*.swift linguist-language=Swift
+*.kt linguist-language=Kotlin
+*.dart linguist-language=Dart

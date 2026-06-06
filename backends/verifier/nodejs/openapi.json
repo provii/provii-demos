@@ -1,0 +1,395 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Provii Verifier Backend API",
+    "version": "1.0.0",
+    "description": "Third-party verifier backend API for age verification using Provii Wallet.\n\nThis is the API contract that verifiers implement to integrate with Provii.\nThe backend handles PKCE generation, HMAC authentication with provii-verifier,\nand secure code_verifier storage.\n\n## Flow\n1. Your mobile app calls POST /api/create-challenge\n2. Your backend generates PKCE pair and authenticates to provii-verifier with HMAC\n3. Your backend stores code_verifier securely and returns deep_link\n4. Mobile app opens Provii Wallet with deep link\n5. User verifies age in wallet (ZK proof submitted to provii-verifier)\n6. Mobile app polls GET /api/status/:sessionId\n7. When verified, mobile app calls POST /api/redeem/:sessionId\n8. Your backend redeems with stored code_verifier\n\n## Security\n- Your backend never exposes HMAC_SECRET or code_verifier to clients\n- All sensitive operations happen server-side\n",
+    "contact": {
+      "name": "Provii Support",
+      "url": "https://provii.app"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local development"
+    },
+    {
+      "url": "https://your-verifier-backend.com",
+      "description": "Production (replace with your URL)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Verification",
+      "description": "Age verification challenge flow"
+    },
+    {
+      "name": "System",
+      "description": "Health and configuration endpoints"
+    }
+  ],
+  "paths": {
+    "/api/create-challenge": {
+      "post": {
+        "summary": "Create verification challenge",
+        "description": "Creates a new age verification challenge. Returns a session ID and deep link URL for the user to complete verification in Provii Wallet.",
+        "operationId": "createChallenge",
+        "tags": [
+          "Verification"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChallengeRequest"
+              },
+              "example": {
+                "minimum_age": 21
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Challenge created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateChallengeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/status/{sessionId}": {
+      "get": {
+        "summary": "Check verification status",
+        "description": "Poll the status of a verification challenge. Returns the current state (pending, verified, expired).",
+        "operationId": "getStatus",
+        "tags": [
+          "Verification"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session ID from challenge creation"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/redeem/{sessionId}": {
+      "post": {
+        "summary": "Redeem verified challenge",
+        "description": "Complete the verification flow by redeeming with the stored code_verifier. Only callable after status shows 'verified'.",
+        "operationId": "redeemChallenge",
+        "tags": [
+          "Verification"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session ID from challenge creation"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Redemption result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Redemption failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "description": "Returns health status and configuration state.",
+        "operationId": "healthCheck",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "summary": "Get configuration",
+        "description": "Returns current configuration (for debugging - remove in production).",
+        "operationId": "getConfig",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateChallengeRequest": {
+        "type": "object",
+        "properties": {
+          "minimum_age": {
+            "type": "integer",
+            "minimum": 13,
+            "maximum": 120,
+            "default": 18,
+            "description": "Minimum age to verify (e.g., 18, 21)"
+          },
+          "expires_in": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 3600,
+            "default": 300,
+            "description": "Challenge expiration in seconds"
+          }
+        },
+        "description": "Request to create a verification challenge"
+      },
+      "CreateChallengeResponse": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "Unique session identifier for polling and redemption"
+          },
+          "deep_link": {
+            "type": "string",
+            "description": "Deep link URL to open Provii Wallet (https://provii.app/verify?d=...)"
+          },
+          "expires_at": {
+            "type": "integer",
+            "description": "Unix timestamp when the challenge expires"
+          },
+          "status_url": {
+            "type": "string",
+            "description": "Relative URL to poll for status"
+          }
+        },
+        "required": [
+          "session_id",
+          "deep_link",
+          "expires_at",
+          "status_url"
+        ],
+        "description": "Response containing session info and deep link"
+      },
+      "StatusResponse": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "verified",
+              "expired",
+              "failed"
+            ],
+            "description": "Current state of the verification"
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Whether age verification succeeded"
+          },
+          "proof_verified": {
+            "type": "boolean",
+            "description": "Whether the ZK proof was verified"
+          }
+        },
+        "required": [
+          "state",
+          "verified"
+        ],
+        "description": "Current verification status"
+      },
+      "RedeemResponse": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "description": "Result of the redemption"
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Whether age was verified"
+          }
+        },
+        "required": [
+          "result",
+          "verified"
+        ],
+        "description": "Redemption result"
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "configured": {
+            "type": "boolean",
+            "description": "Whether credentials are configured"
+          }
+        },
+        "required": [
+          "status",
+          "configured"
+        ],
+        "description": "Health check response"
+      },
+      "ConfigResponse": {
+        "type": "object",
+        "properties": {
+          "verifier_api_url": {
+            "type": "string",
+            "description": "Verifier API URL being used"
+          },
+          "client_id": {
+            "type": "string",
+            "description": "Client ID (if configured)"
+          },
+          "api_key_configured": {
+            "type": "boolean",
+            "description": "Whether API key is set"
+          },
+          "hmac_secret_configured": {
+            "type": "boolean",
+            "description": "Whether HMAC secret is set"
+          }
+        },
+        "required": [
+          "verifier_api_url",
+          "api_key_configured",
+          "hmac_secret_configured"
+        ],
+        "description": "Configuration info"
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "code": {
+            "type": "string",
+            "description": "Error code"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Error reference ID for debugging"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "description": "Error response"
+      }
+    }
+  }
+}

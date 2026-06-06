@@ -1,0 +1,87 @@
+name: Bug Report
+description: Report a bug in provii-demos
+title: "[Bug]: "
+labels: ["bug"]
+body:
+ - type: markdown
+ attributes:
+ value: |
+ Thank you for taking the time to report this bug. Please fill out the fields below so we can investigate.
+
+ - type: textarea
+ id: description
+ attributes:
+ label: Description
+ description: A clear description of the bug.
+ placeholder: Describe what went wrong.
+ validations:
+ required: true
+
+ - type: textarea
+ id: steps
+ attributes:
+ label: Steps to Reproduce
+ description: List the steps needed to trigger this bug.
+ placeholder: |
+ 1. Go to '...'
+ 2. Click on '...'
+ 3. Observe the error
+ validations:
+ required: true
+
+ - type: textarea
+ id: expected
+ attributes:
+ label: Expected Behaviour
+ description: What did you expect to happen?
+ validations:
+ required: true
+
+ - type: textarea
+ id: actual
+ attributes:
+ label: Actual Behaviour
+ description: What actually happened?
+ validations:
+ required: true
+
+ - type: dropdown
+ id: demo-backend
+ attributes:
+ label: Demo Backend Language
+ description: Which demo backend were you using?
+ options:
+ - TypeScript (Node.js)
+ - Python
+ - Go
+ - Rust
+ - Other
+ validations:
+ required: true
+
+ - type: input
+ id: os
+ attributes:
+ label: Operating System
+ description: e.g. macOS 15.1, Ubuntu 24.04, Windows 11
+ placeholder: macOS 15.1
+ validations:
+ required: true
+
+ - type: input
+ id: browser-device
+ attributes:
+ label: Browser or Device
+ description: e.g. Chrome 130, Safari 18, iPhone 16
+ placeholder: Chrome 130
+ validations:
+ required: false
+
+ - type: textarea
+ id: logs
+ attributes:
+ label: Logs and Screenshots
+ description: Paste any relevant log output or attach screenshots.
+ render: shell
+ validations:
+ required: false

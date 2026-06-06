@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/eslintrc.json",
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "plugins": ["@typescript-eslint"],
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "public/**",
+    "src/**/__tests__/**",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts"
+  ],
+  "rules": {},
+  "overrides": [
+    {
+      "files": ["src/docs/**/*.ts"],
+      "excludedFiles": [
+        "src/docs/log-sanitizer.ts",
+        "src/docs/**/__tests__/**",
+        "src/docs/**/*.test.ts",
+        "src/docs/**/*.spec.ts"
+      ],
+      "rules": {
+        "no-console": "error",
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "MemberExpression[object.name='console']",
+            "message": "W4-S13: do not call console.* directly inside src/docs/**. Use the sanitised facade returned by installLogSanitizer() in src/docs/log-sanitizer.ts so secret material is redacted before logs leave the worker."
+          },
+          {
+            "selector": "CallExpression[callee.property.name='writeDataPoint']",
+            "message": "W4-S13: do not call writeDataPoint directly. Wrap the Analytics Engine binding with installLogSanitizer().wrapAnalytics(ds) so payloads are sanitised before they leave the worker."
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+rules:
+
+  # ==========================================================================
+  # RULE 1: Non-constant-time secret comparison (Python)
+  # ==========================================================================
+  # Direct == on variables with secret/hmac/token in the name leaks timing
+  # information. Use hmac.compare_digest or secrets.compare_digest.
+  - id: provii.demos.python-non-ct-comparison
+    patterns:
+      - pattern-either:
+          - pattern: $SECRET == $OTHER
+          - pattern: $OTHER == $SECRET
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: '.*(?:secret|hmac|token|api_key|signature|auth_tag).*'
+    paths:
+      exclude:
+        - "**/node_modules/**"
+        - "**/__pycache__/**"
+        - "**/test_*"
+        - "**/*_test.py"
+        - "**/tests/**"
+    message: >
+      Direct == comparison on a value that appears to be a secret or HMAC.
+      Use hmac.compare_digest() for constant-time comparison.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      subcategory: timing-attack
+      cwe: "CWE-208: Observable Timing Discrepancy"
+
+  # ==========================================================================
+  # RULE 2: Hardcoded credentials (Python)
+  # ==========================================================================
+  - id: provii.demos.python-hardcoded-secret
+    pattern-regex: "(?:SECRET|TOKEN|API_KEY|PASSWORD|HMAC_KEY)\\s*=\\s*[\"'][^\"']{8,}[\"']"
+    paths:
+      exclude:
+        - "**/node_modules/**"
+        - "**/__pycache__/**"
+        - "**/test_*"
+        - "**/*_test.py"
+        - "**/tests/**"
+        - "**/*.md"
+    message: >
+      Possible hardcoded credential. Secrets must be loaded from environment
+      variables, not embedded in source.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      subcategory: hardcoded-credentials
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+
+  # ==========================================================================
+  # RULE 3: Non-constant-time secret comparison (TypeScript/JavaScript)
+  # ==========================================================================
+  # Catches === / == on variables whose names contain secret, hmac, token, etc.
+  # Excludes safe constructs: null/undefined/empty-string guards, typeof checks,
+  # string-literal comparisons (OID constants, URL paths), and property names
+  # that merely contain "signature" in a non-secret context (e.g. OID fields).
+  - id: provii.demos.ts-non-ct-comparison
+    patterns:
+      - pattern-either:
+          - pattern: $SECRET === $OTHER
+          - pattern: $OTHER === $SECRET
+          - pattern: $SECRET == $OTHER
+          - pattern: $OTHER == $SECRET
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: '(?i).*(?:secret|hmac|token|apikey|authtag)(?!(?:oid|algorithm|type|configured|validation|endpoint|url|name)\b).*'
+      # Require the OTHER side to also look like a secret value, not a literal
+      # sentinel. This prevents FPs on null/undefined/empty-string guards and
+      # typeof checks (e.g. `typeof x === "string"`).
+      - metavariable-regex:
+          metavariable: $OTHER
+          regex: '(?i).*(?:secret|hmac|token|apikey|authtag).*'
+    paths:
+      exclude:
+        - "**/node_modules/**"
+        - "**/dist/**"
+        - "**/*.test.*"
+        - "**/*.spec.*"
+        - "**/tests/**"
+        - "**/integration-tests/**"
+    message: >
+      Direct === comparison on a value that appears to be a secret or HMAC.
+      Use crypto.timingSafeEqual() for constant-time comparison.
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      subcategory: timing-attack
+      cwe: "CWE-208: Observable Timing Discrepancy"
+
+  # ==========================================================================
+  # RULE 4: Hardcoded credentials (TypeScript/JavaScript)
+  # ==========================================================================
+  # Catches assignments of the form SECRET = "somevalue" where the value is a
+  # literal credential (8+ chars). Excludes template interpolations (${...}),
+  # descriptive names (lowercase-with-hyphens like "secrets-store-assignment"),
+  # and env-var placeholder strings. The negative lookahead on \$\{ prevents
+  # matching code-generation templates that interpolate runtime values.
+  - id: provii.demos.ts-hardcoded-secret
+    pattern-regex: "(?:SECRET|TOKEN|API_KEY|PASSWORD|HMAC_KEY)\\s*=\\s*[\"'](?!\\$\\{)[^\"'\\s+()]{8,}[\"']"
+    paths:
+      exclude:
+        - "**/node_modules/**"
+        - "**/dist/**"
+        - "**/*.test.*"
+        - "**/*.spec.*"
+        - "**/tests/**"
+        - "**/*.md"
+    message: >
+      Possible hardcoded credential. Secrets must be loaded from environment
+      variables or Cloudflare secrets bindings.
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      subcategory: hardcoded-credentials
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+
+  # ==========================================================================
+  # RULE 5: Secret material in console.log (TypeScript/JavaScript)
+  # ==========================================================================
+  # Catches console.log/warn/error calls that pass a variable whose name
+  # contains secret, hmac, token, etc. The metavariable regex requires a
+  # dotted-identifier shape (no spaces, no leading quote) to avoid firing on
+  # string literals that merely mention an env var name in instructional text,
+  # and excludes boolean-cast patterns (!!var) which log true/false only.
+  - id: provii.demos.ts-secret-in-log
+    patterns:
+      - pattern-either:
+          - pattern: console.log(..., $SECRET, ...)
+          - pattern: console.error(..., $SECRET, ...)
+          - pattern: console.warn(..., $SECRET, ...)
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: '(?i)^[a-z_$][\w$.]*(?:secret|hmac|token|apikey|password|privatekey|signingkey)[\w$.]*$'
+      # Exclude boolean-cast patterns: !!config.hmacSecret logs true/false
+      - pattern-not: console.log(..., !!$X, ...)
+      - pattern-not: console.error(..., !!$X, ...)
+      - pattern-not: console.warn(..., !!$X, ...)
+    paths:
+      exclude:
+        - "**/node_modules/**"
+        - "**/dist/**"
+        - "**/*.test.*"
+        - "**/*.spec.*"
+        - "**/tests/**"
+    message: >
+      Secret material appears to be logged via console output. Remove
+      or redact before deploying.
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      subcategory: information-leak
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"

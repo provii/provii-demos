@@ -1,0 +1,120 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Age %lld credential issued" : {
+      "extractionState" : "manual"
+    },
+    "An unknown error occurred" : {
+      "extractionState" : "manual"
+    },
+    "App will restart" : {
+      "extractionState" : "manual"
+    },
+    "Authentication failed. Please contact support." : {
+      "extractionState" : "manual"
+    },
+    "Credential issued. Opening Provii Wallet." : {
+      "extractionState" : "manual"
+    },
+    "Demo App - Not for production use" : {
+      "extractionState" : "manual"
+    },
+    "Demo Bank" : {
+      "extractionState" : "manual"
+    },
+    "Double tap to issue a test credential" : {
+      "extractionState" : "manual"
+    },
+    "Enable Sandbox Mode" : {
+      "extractionState" : "manual"
+    },
+    "Error" : {
+      "extractionState" : "manual"
+    },
+    "Failed to open Provii Wallet. Make sure the app is installed." : {
+      "extractionState" : "manual"
+    },
+    "Go to Settings" : {
+      "extractionState" : "manual"
+    },
+    "I've enabled sandbox mode" : {
+      "extractionState" : "manual"
+    },
+    "Invalid backend URL configuration." : {
+      "extractionState" : "manual"
+    },
+    "Invalid URL configuration. Please check the backend URL setting." : {
+      "extractionState" : "manual"
+    },
+    "Invalid response from server." : {
+      "extractionState" : "manual"
+    },
+    "Issue Age Credential" : {
+      "extractionState" : "manual"
+    },
+    "Issue Another" : {
+      "extractionState" : "manual"
+    },
+    "Issue credential for age %lld" : {
+      "extractionState" : "manual"
+    },
+    "Network error: %@" : {
+      "extractionState" : "manual"
+    },
+    "OK" : {
+      "extractionState" : "manual"
+    },
+    "Open Provii Wallet" : {
+      "extractionState" : "manual"
+    },
+    "Opening Provii Wallet" : {
+      "extractionState" : "manual"
+    },
+    "Provii Wallet is not installed." : {
+      "extractionState" : "manual"
+    },
+    "Received an unexpected response from the server." : {
+      "extractionState" : "manual"
+    },
+    "Sandbox Mode Required" : {
+      "extractionState" : "manual"
+    },
+    "Server error (HTTP %lld)" : {
+      "extractionState" : "manual"
+    },
+    "Success" : {
+      "extractionState" : "manual"
+    },
+    "Tap an age to issue a demo credential to Provii Wallet" : {
+      "extractionState" : "manual"
+    },
+    "Tap the screen 5 times" : {
+      "extractionState" : "manual"
+    },
+    "The request could not be completed. Please try again." : {
+      "extractionState" : "manual"
+    },
+    "The requested resource was not found." : {
+      "extractionState" : "manual"
+    },
+    "The server encountered an error. Please try again later." : {
+      "extractionState" : "manual"
+    },
+    "This credential can be used for under-age verification (e.g., COPPA compliance, child safety features)." : {
+      "extractionState" : "manual"
+    },
+    "This demo uses Provii's sandbox environment. To enable sandbox mode in Provii Wallet:" : {
+      "extractionState" : "manual"
+    },
+    "Unable to connect to the server. Please check your internet connection and try again." : {
+      "extractionState" : "manual"
+    },
+    "Unable to open Provii Wallet." : {
+      "extractionState" : "manual"
+    },
+    "Unable to process the server response. Please try again." : {
+      "extractionState" : "manual"
+    }
+  },
+  "version" : "1.0"
+}

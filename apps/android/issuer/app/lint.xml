@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Disable specific warnings that are acceptable for demo apps -->
+    <issue id="HardcodedText" severity="warning" />
+    <issue id="UnusedResources" severity="warning" />
+    <!-- Enable security checks -->
+    <issue id="SecureRandom" severity="error" />
+    <issue id="TrustAllX509TrustManager" severity="error" />
+</lint>

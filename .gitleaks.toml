@@ -1,0 +1,14 @@
+# Gitleaks config — extend the default ruleset and allowlist deliberately-fake
+# secrets in test fixtures / canonical crypto vectors. These are deterministic
+# test values, never real credentials; non-test code is still fully scanned.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures and canonical message vectors hold fake secrets, not real credentials."
+paths = [
+  '''__tests__/''',
+  '''\.test\.(ts|js|mjs)$''',
+  '''canonical_message_vectors\.json$''',
+  '''integration-tests/''',
+]

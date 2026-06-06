@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+ - name: Security Vulnerability
+ url: https://github.com/provii-id/provii-demos/security/advisories/new
+ about: Report security vulnerabilities through our security advisory process
+ - name: General Support
+ url: https://docs.provii.app
+ about: Visit our documentation for general help

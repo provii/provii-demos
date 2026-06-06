@@ -1,0 +1,306 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Age 13+ Verification" : {
+      "extractionState" : "manual"
+    },
+    "Age 18+ Verification" : {
+      "extractionState" : "manual"
+    },
+    "Age 21+ Verification" : {
+      "extractionState" : "manual"
+    },
+    "Age 25+ Verification" : {
+      "extractionState" : "manual"
+    },
+    "Verify the user is 13 years or older (COPPA compliance)" : {
+      "extractionState" : "manual"
+    },
+    "Verify the user is 18 years or older (general adult content)" : {
+      "extractionState" : "manual"
+    },
+    "Verify the user is 21 years or older (alcohol, cannabis)" : {
+      "extractionState" : "manual"
+    },
+    "Verify the user is 25 years or older (car rental, etc.)" : {
+      "extractionState" : "manual"
+    },
+    "Under 13 Verification" : {
+      "extractionState" : "manual"
+    },
+    "Under 16 Verification" : {
+      "extractionState" : "manual"
+    },
+    "Under 18 Verification" : {
+      "extractionState" : "manual"
+    },
+    "Under 21 Verification" : {
+      "extractionState" : "manual"
+    },
+    "Verify the user is under 13 years old (children's content)" : {
+      "extractionState" : "manual"
+    },
+    "Verify the user is under 16 years old (GDPR parental consent)" : {
+      "extractionState" : "manual"
+    },
+    "Verify the user is under 18 years old (minor status)" : {
+      "extractionState" : "manual"
+    },
+    "Verify the user is under 21 years old (youth programs)" : {
+      "extractionState" : "manual"
+    },
+    "Invalid server URL" : {
+      "extractionState" : "manual"
+    },
+    "Network error: %@" : {
+      "extractionState" : "manual"
+    },
+    "Server error (code: %lld)" : {
+      "extractionState" : "manual"
+    },
+    "Invalid response from server" : {
+      "extractionState" : "manual"
+    },
+    "Session not found" : {
+      "extractionState" : "manual"
+    },
+    "Failed to parse response: %@" : {
+      "extractionState" : "manual"
+    },
+    "Invalid deep link format from backend" : {
+      "extractionState" : "manual"
+    },
+    "Provii Wallet is not installed" : {
+      "extractionState" : "manual"
+    },
+    "Could not open Provii Wallet" : {
+      "extractionState" : "manual"
+    },
+    "Verification failed: %@" : {
+      "extractionState" : "manual"
+    },
+    "Verification challenge expired" : {
+      "extractionState" : "manual"
+    },
+    "Verification timed out" : {
+      "extractionState" : "manual"
+    },
+    "No active verification session" : {
+      "extractionState" : "manual"
+    },
+    "Verification Mode" : {
+      "extractionState" : "manual"
+    },
+    "Over Age" : {
+      "extractionState" : "manual"
+    },
+    "Under Age" : {
+      "extractionState" : "manual"
+    },
+    "Switch between over-age and under-age verification modes" : {
+      "extractionState" : "manual"
+    },
+    "Select the minimum age you want to verify. The user will prove they meet this requirement without revealing their actual date of birth." : {
+      "extractionState" : "manual"
+    },
+    "Select the maximum age you want to verify. The user will prove they are under this age without revealing their actual date of birth." : {
+      "extractionState" : "manual"
+    },
+    "Powered by zero-knowledge proofs. The user's actual age is never revealed to your application." : {
+      "extractionState" : "manual"
+    },
+    "Verify Age" : {
+      "extractionState" : "manual"
+    },
+    "Age %lld and older" : {
+      "extractionState" : "manual"
+    },
+    "Under age %lld" : {
+      "extractionState" : "manual"
+    },
+    "Verification failed" : {
+      "extractionState" : "manual"
+    },
+    "Verification in progress" : {
+      "extractionState" : "manual"
+    },
+    "Please complete the age verification in Provii Wallet and return to this app." : {
+      "extractionState" : "manual"
+    },
+    "Time remaining:" : {
+      "extractionState" : "manual"
+    },
+    "Verifying: Age %lld+" : {
+      "extractionState" : "manual"
+    },
+    "Verifying: Under %lld" : {
+      "extractionState" : "manual"
+    },
+    "The user will prove they are %lld years or older using a zero-knowledge proof. Their actual date of birth will not be revealed." : {
+      "extractionState" : "manual"
+    },
+    "The user will prove they are under %lld years old using a zero-knowledge proof. Their actual date of birth will not be revealed." : {
+      "extractionState" : "manual"
+    },
+    "Creating verification challenge..." : {
+      "extractionState" : "manual"
+    },
+    "Opening Provii Wallet..." : {
+      "extractionState" : "manual"
+    },
+    "Waiting for verification..." : {
+      "extractionState" : "manual"
+    },
+    "Age verified! Completing..." : {
+      "extractionState" : "manual"
+    },
+    "Finalizing verification..." : {
+      "extractionState" : "manual"
+    },
+    "Verification complete!" : {
+      "extractionState" : "manual"
+    },
+    "Challenge expired" : {
+      "extractionState" : "manual"
+    },
+    "Try Again" : {
+      "extractionState" : "manual"
+    },
+    "Cancel Verification" : {
+      "extractionState" : "manual"
+    },
+    "Verifying..." : {
+      "extractionState" : "manual"
+    },
+    "Waiting for verification in Provii Wallet" : {
+      "extractionState" : "manual"
+    },
+    "No active session" : {
+      "extractionState" : "manual"
+    },
+    "Redemption returned unverified" : {
+      "extractionState" : "manual"
+    },
+    "Verification could not be completed" : {
+      "extractionState" : "manual"
+    },
+    "Age verified, completing" : {
+      "extractionState" : "manual"
+    },
+    "Verification succeeded" : {
+      "extractionState" : "manual"
+    },
+    "Age Verified!" : {
+      "extractionState" : "manual"
+    },
+    "Verification Failed" : {
+      "extractionState" : "manual"
+    },
+    "The user has successfully proven they are %lld years or older." : {
+      "extractionState" : "manual"
+    },
+    "The user has successfully proven they are under %lld years old." : {
+      "extractionState" : "manual"
+    },
+    "Unable to verify the user is %lld years or older." : {
+      "extractionState" : "manual"
+    },
+    "Unable to verify the user is under %lld years old." : {
+      "extractionState" : "manual"
+    },
+    "What happened:" : {
+      "extractionState" : "manual"
+    },
+    "Possible reasons:" : {
+      "extractionState" : "manual"
+    },
+    "A zero-knowledge proof was generated by Provii Wallet" : {
+      "extractionState" : "manual"
+    },
+    "The proof was verified cryptographically" : {
+      "extractionState" : "manual"
+    },
+    "The user's actual date of birth was never revealed" : {
+      "extractionState" : "manual"
+    },
+    "The user cancelled the verification" : {
+      "extractionState" : "manual"
+    },
+    "The verification challenge expired" : {
+      "extractionState" : "manual"
+    },
+    "The user doesn't meet the minimum age requirement" : {
+      "extractionState" : "manual"
+    },
+    "The user doesn't meet the maximum age requirement" : {
+      "extractionState" : "manual"
+    },
+    "A network or technical error occurred" : {
+      "extractionState" : "manual"
+    },
+    "Unlocked" : {
+      "extractionState" : "manual"
+    },
+    "Locked" : {
+      "extractionState" : "manual"
+    },
+    "Access to age-restricted content can now be granted." : {
+      "extractionState" : "manual"
+    },
+    "User qualifies for age-appropriate content." : {
+      "extractionState" : "manual"
+    },
+    "Access to age-restricted content should be denied." : {
+      "extractionState" : "manual"
+    },
+    "User does not qualify for age-appropriate content." : {
+      "extractionState" : "manual"
+    },
+    "Start Over" : {
+      "extractionState" : "manual"
+    },
+    "Result" : {
+      "extractionState" : "manual"
+    },
+    "Warning" : {
+      "extractionState" : "manual"
+    },
+    "Enable Sandbox Mode" : {
+      "extractionState" : "manual"
+    },
+    "Before testing age verification, you need to enable Sandbox Mode in Provii Wallet. This allows testing without real credentials." : {
+      "extractionState" : "manual"
+    },
+    "Instructions:" : {
+      "extractionState" : "manual"
+    },
+    "Open Provii Wallet on your device" : {
+      "extractionState" : "manual"
+    },
+    "Go to Settings (gear icon)" : {
+      "extractionState" : "manual"
+    },
+    "Tap the screen 5 times to reveal developer options" : {
+      "extractionState" : "manual"
+    },
+    "Enable \"Sandbox Mode\"" : {
+      "extractionState" : "manual"
+    },
+    "The app will restart in sandbox mode" : {
+      "extractionState" : "manual"
+    },
+    "Information" : {
+      "extractionState" : "manual"
+    },
+    "In sandbox mode, you can use demo credentials that were issued from the Provii Issuer Demo app for testing age verification." : {
+      "extractionState" : "manual"
+    },
+    "I've Enabled Sandbox Mode" : {
+      "extractionState" : "manual"
+    },
+    "Getting Started" : {
+      "extractionState" : "manual"
+    }
+  },
+  "version" : "1.0"
+}

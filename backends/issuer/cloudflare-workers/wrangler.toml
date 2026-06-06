@@ -1,0 +1,69 @@
+#######################################################################
+# Provii Issuer Demo Backend - Cloudflare Workers                     #
+# Demo backend for third-party issuers integrating with Provii        #
+#######################################################################
+
+name = "issuer-demo"
+main = "src/index.ts"
+compatibility_date = "2025-11-17"
+compatibility_flags = ["nodejs_compat"]
+
+# Custom domain routing
+routes = [
+  { pattern = "issuer-demo.provii.app", custom_domain = true }
+]
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+
+# CORS Configuration
+# Comma-separated list of allowed origins
+# Example: "https://yourapp.com,https://www.yourapp.com"
+ALLOWED_ORIGINS = "https://issuer-demo.provii.app"
+
+# Secrets (set via wrangler secret put)
+# REQUIRED for production:
+# - CLIENT_ID: Your client ID from the Provii admin portal
+#   wrangler secret put CLIENT_ID
+#
+# - HMAC_SECRET: Your HMAC secret (base64url encoded)
+#   wrangler secret put HMAC_SECRET
+#
+# - ISSUER_API_URL: Provii issuer API base URL
+#   wrangler secret put ISSUER_API_URL
+#
+# IMPORTANT: Never commit secrets to version control!
+
+# ── Secrets Store ────────────────────────────────────────────────────
+[[secrets_store_secrets]]
+binding = "DEMO_TOKEN_SECRET"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "DEMO_TOKEN_SECRET"
+
+# Observability Configuration
+[observability.logs]
+enabled = true
+
+#######################################################################
+# Sandbox Environment (--env sandbox)                                  #
+#######################################################################
+[env.sandbox]
+name = "issuer-demo-sandbox"
+
+routes = [
+  { pattern = "sandbox-issuer-demo.provii.app", custom_domain = true }
+]
+
+[env.sandbox.vars]
+ENVIRONMENT = "sandbox"
+ALLOWED_ORIGINS = "https://sandbox-issuer-demo.provii.app,http://localhost:3000,http://localhost:5173"
+
+# ── Sandbox Secrets Store ────────────────────────────────────────────
+[[env.sandbox.secrets_store_secrets]]
+binding = "DEMO_TOKEN_SECRET"
+store_id = "6e32e830825542ef86170c1b634df9e6"
+secret_name = "DEMO_TOKEN_SECRET"
+
+[env.sandbox.observability.logs]
+enabled = true

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background circle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,27 C68.912,27 81,39.088 81,54 C81,68.912 68.912,81 54,81 C39.088,81 27,68.912 27,54 C27,39.088 39.088,27 54,27Z"/>
+    <!-- Share icon - three connected dots -->
+    <!-- Top right dot -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M66,42 C68.76,42 71,44.24 71,47 C71,49.76 68.76,52 66,52 C63.24,52 61,49.76 61,47 C61,44.24 63.24,42 66,42Z"/>
+    <!-- Middle left dot -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M42,49 C44.76,49 47,51.24 47,54 C47,56.76 44.76,59 42,59 C39.24,59 37,56.76 37,54 C37,51.24 39.24,49 42,49Z"/>
+    <!-- Bottom right dot -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M66,56 C68.76,56 71,58.24 71,61 C71,63.76 68.76,66 66,66 C63.24,66 61,63.76 61,61 C61,58.24 63.24,56 66,56Z"/>
+    <!-- Connecting lines -->
+    <path
+        android:strokeColor="#7C3AED"
+        android:strokeWidth="2.5"
+        android:pathData="M46,52 L62,48"/>
+    <path
+        android:strokeColor="#7C3AED"
+        android:strokeWidth="2.5"
+        android:pathData="M46,56 L62,60"/>
+</vector>

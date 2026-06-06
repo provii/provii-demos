@@ -1,0 +1,314 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Provii Verifier Backend API",
+    "description": "Third-party verifier backend API for age verification using Provii Wallet.\n\nThis is the API contract that verifiers implement to integrate with Provii. The backend handles PKCE generation, HMAC authentication with provii-verifier, and secure code_verifier storage.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Health check endpoint.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "summary": "Get Config",
+        "description": "Get config (for debugging - remove in production).",
+        "operationId": "get_config_api_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/create-challenge": {
+      "post": {
+        "summary": "Create Challenge",
+        "description": "Create verification challenge.\n\nPOST /api/create-challenge\nBody: { \"minimum_age\": 18 }\nResponse: {\n    \"session_id\": \"uuid\",\n    \"deep_link\": \"https://provii.app/verify?d=...\",\n    \"expires_at\": 1735600000\n}",
+        "operationId": "create_challenge_api_create_challenge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChallengeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateChallengeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/status/{session_id}": {
+      "get": {
+        "summary": "Get Status",
+        "description": "Check verification status.\n\nGET /api/status/:sessionId\nResponse: { \"state\": \"pending\" | \"verified\" | \"expired\", \"verified\": boolean }",
+        "operationId": "get_status_api_status__session_id__get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/redeem/{session_id}": {
+      "post": {
+        "summary": "Redeem",
+        "description": "Redeem verified challenge.\n\nPOST /api/redeem/:sessionId\nResponse: { \"result\": \"verified\", \"verified\": true }",
+        "operationId": "redeem_api_redeem__session_id__post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateChallengeRequest": {
+        "properties": {
+          "minimum_age": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 13.0,
+            "title": "Minimum Age",
+            "description": "Minimum age to verify",
+            "default": 18
+          },
+          "expires_in": {
+            "type": "integer",
+            "maximum": 3600.0,
+            "minimum": 60.0,
+            "title": "Expires In",
+            "description": "Challenge expiration in seconds",
+            "default": 300
+          }
+        },
+        "type": "object",
+        "title": "CreateChallengeRequest"
+      },
+      "CreateChallengeResponse": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "deep_link": {
+            "type": "string",
+            "title": "Deep Link"
+          },
+          "expires_at": {
+            "type": "integer",
+            "title": "Expires At"
+          },
+          "status_url": {
+            "type": "string",
+            "title": "Status Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "deep_link",
+          "expires_at",
+          "status_url"
+        ],
+        "title": "CreateChallengeResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "RedeemResponse": {
+        "properties": {
+          "result": {
+            "type": "string",
+            "title": "Result"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "result",
+          "verified"
+        ],
+        "title": "RedeemResponse"
+      },
+      "StatusResponse": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "proof_verified": {
+            "type": "boolean",
+            "title": "Proof Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "verified",
+          "proof_verified"
+        ],
+        "title": "StatusResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local development"
+    },
+    {
+      "url": "https://your-verifier-backend.com",
+      "description": "Production (replace with your URL)"
+    }
+  ]
+}

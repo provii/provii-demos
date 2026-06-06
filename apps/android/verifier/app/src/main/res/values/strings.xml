@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Demo Social</string>
+
+    <!-- Common -->
+    <string name="common_continue">Continue</string>
+    <string name="common_try_again">Try Again</string>
+    <string name="common_start_over">Start Over</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_demo_footer">Demo App \u2022 Not for production use</string>
+    <string name="common_phone_icon">Phone</string>
+
+    <!-- Sandbox Instructions Screen -->
+    <string name="sandbox_title">Provii Verifier Demo</string>
+    <string name="sandbox_heading">Enable Sandbox Mode</string>
+    <string name="sandbox_description">This demo uses sandbox credentials. Enable Sandbox Mode in Provii Wallet to test.</string>
+    <string name="sandbox_instructions_title">How to enable Sandbox Mode:</string>
+    <string name="sandbox_step_1">Open Provii Wallet and go to Settings</string>
+    <string name="sandbox_step_2">Tap the version number 5 times</string>
+    <string name="sandbox_step_3">Toggle \"Sandbox Mode\" to ON</string>
+    <string name="sandbox_step_4">Use the Provii Issuer Demo to issue a test credential</string>
+    <string name="sandbox_already_enabled">If you already have Sandbox Mode enabled and a test credential, you can continue.</string>
+    <string name="sandbox_settings_icon">Settings</string>
+
+    <!-- Age Threshold Screen -->
+    <string name="threshold_app_title">Demo Social</string>
+    <string name="threshold_heading">Age-Restricted Content</string>
+    <string name="threshold_mode_over_age">Over Age</string>
+    <string name="threshold_mode_under_age">Under Age</string>
+    <string name="threshold_description_over">This content requires age verification. Your actual date of birth stays private \u2014 we only verify you meet the minimum age.</string>
+    <string name="threshold_description_under">This content is restricted to younger users. Your actual date of birth stays private \u2014 we only verify you are under the age limit.</string>
+    <string name="threshold_age_over">Age %d+</string>
+    <string name="threshold_age_under">Under %d</string>
+    <string name="threshold_share_icon">Age verification</string>
+    <string name="threshold_select_age">Select an age to verify</string>
+
+    <!-- Verification Screen -->
+    <string name="verification_title">Verifying\u2026</string>
+    <string name="verification_status_creating">Creating verification challenge\u2026</string>
+    <string name="verification_status_opening">Opening Provii Wallet\u2026</string>
+    <string name="verification_status_waiting">Waiting for verification\u2026</string>
+    <string name="verification_status_verified">Age verified! Completing\u2026</string>
+    <string name="verification_status_redeeming">Finalizing verification\u2026</string>
+    <string name="verification_status_redeemed">Verification complete!</string>
+    <string name="verification_status_expired">Challenge expired</string>
+    <string name="verification_status_failed">Verification failed</string>
+    <string name="verification_instructions">Please complete the age verification in Provii Wallet and return to this app.</string>
+    <string name="verification_time_remaining">Time remaining: </string>
+    <string name="verification_cancel">Cancel Verification</string>
+    <string name="verification_cancel_icon">Cancel</string>
+    <string name="verification_progress">Verification in progress</string>
+    <string name="verification_error_icon">Verification error</string>
+    <string name="qr_code_description">QR code for cross-device verification</string>
+    <string name="qr_code_label">Scan with Provii Wallet on another device</string>
+    <string name="open_provii_wallet">Open Provii Wallet</string>
+
+    <!-- Verification Info Card - Over Age -->
+    <string name="verification_info_title_over">Verifying: Age %d+</string>
+    <string name="verification_info_body_over">The user will prove they are %d years or older using a zero-knowledge proof. Their actual date of birth will not be revealed.</string>
+
+    <!-- Verification Info Card - Under Age -->
+    <string name="verification_info_title_under">Verifying: Under %d</string>
+    <string name="verification_info_body_under">The user will prove they are under %d years old using a zero-knowledge proof. Their actual date of birth will not be revealed.</string>
+
+    <!-- Result Screen -->
+    <string name="result_title">Result</string>
+
+    <!-- Result - Success Over Age -->
+    <string name="result_success_title">Age Verified!</string>
+    <string name="result_success_description_over">The user has successfully proven they are %d years or older.</string>
+    <string name="result_success_access_over">Access to age-restricted content can now be granted.</string>
+
+    <!-- Result - Success Under Age -->
+    <string name="result_success_description_under">The user has successfully proven they are under %d years old.</string>
+    <string name="result_success_access_under">User qualifies for age-appropriate content.</string>
+
+    <!-- Result - Failure Over Age -->
+    <string name="result_failure_title">Verification Failed</string>
+    <string name="result_failure_description_over">Unable to verify the user is %d years or older.</string>
+    <string name="result_failure_access">Access to age-restricted content should be denied.</string>
+
+    <!-- Result - Failure Under Age -->
+    <string name="result_failure_description_under">Unable to verify the user is under %d years old.</string>
+
+    <!-- Result - What happened -->
+    <string name="result_what_happened">What happened:</string>
+    <string name="result_possible_reasons">Possible reasons:</string>
+    <string name="result_bullet_zkp">A zero-knowledge proof was generated by Provii Wallet</string>
+    <string name="result_bullet_crypto">The proof was verified cryptographically</string>
+    <string name="result_bullet_private">The user\'s actual date of birth was never revealed</string>
+    <string name="result_bullet_over_proven">The user proved they are %d or older</string>
+    <string name="result_bullet_under_proven">The user proved they are under %d</string>
+    <string name="result_bullet_cancelled">The user cancelled the verification</string>
+    <string name="result_bullet_expired">The verification challenge expired</string>
+    <string name="result_bullet_not_meet_over">The user doesn\'t meet the minimum age requirement</string>
+    <string name="result_bullet_not_meet_under">The user doesn\'t meet the under-age requirement</string>
+    <string name="result_bullet_network_error">A network or technical error occurred</string>
+    <string name="result_success_icon">Verification succeeded</string>
+    <string name="result_failure_icon">Verification failed</string>
+    <string name="result_lock_open_icon">Access granted</string>
+    <string name="result_lock_icon">Access denied</string>
+</resources>
