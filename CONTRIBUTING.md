@@ -29,7 +29,7 @@ the component you plan to work on.
 ### Clone and install
 
 ```bash
-git clone https://github.com/provii-id/provii-demos.git
+git clone https://github.com/provii/provii-demos.git
 cd provii-demos
 ```
 
@@ -124,7 +124,7 @@ change was made, not what was changed.
 1. Fork the repository and create a feature branch from `main`.
 2. Make your changes. Keep commits atomic, one logical change per commit.
 4. Run the relevant test suite and linter before pushing.
-5. Open a pull request against `main` on `provii-id/provii-demos`.
+5. Open a pull request against `main` on `provii/provii-demos`.
 
 Your PR description should include a short summary of what changed and why, plus
 a note on how reviewers can verify the behaviour. Screenshots or terminal output

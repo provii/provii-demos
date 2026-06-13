@@ -21,7 +21,7 @@ communication sent to the project, including pull requests, commits, issue
 comments, and mailing list messages, but excluding communications conspicuously
 marked "Not a Contribution."
 
-"Project" means any repository owned by the `provii-id` GitHub organisation.
+"Project" means any repository owned by the `provii` GitHub organisation.
 
 ## 2. Grant of Copyright Licence
 

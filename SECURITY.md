@@ -34,11 +34,11 @@ Only the latest commit on the main branch is supported. This is a demo repositor
 
 Do not create a public GitHub issue. Email us at security@provii.app with a description of the vulnerability, steps to reproduce, potential impact, and any suggested fixes.
 
-You can also create a [private security advisory](https://github.com/provii-id/provii-demos/security/advisories/new) on GitHub.
+You can also create a [private security advisory](https://github.com/provii/provii-demos/security/advisories/new) on GitHub.
 
 ### For Medium or Low Severity
 
-Create a [private security advisory](https://github.com/provii-id/provii-demos/security/advisories/new) on GitHub. Provide detailed reproduction steps and include any relevant code snippets or screenshots.
+Create a [private security advisory](https://github.com/provii/provii-demos/security/advisories/new) on GitHub. Provide detailed reproduction steps and include any relevant code snippets or screenshots.
 
 ### Encrypted Communication
 
@@ -112,7 +112,7 @@ This repository uses automated security scanning:
 For security-related inquiries:
 
 - Email: security@provii.app
-- Security advisories: [GitHub Security Advisories](https://github.com/provii-id/provii-demos/security/advisories)
+- Security advisories: [GitHub Security Advisories](https://github.com/provii/provii-demos/security/advisories)
 
 For general support:
 
